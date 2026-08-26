@@ -1,0 +1,555 @@
+import { Service, Category, Province, EventType } from "./types"
+
+export const provinces: Province[] = [
+  { id: "nord-kivu", name: "Nord-Kivu", capital: "Goma", count: 18 },
+  { id: "sud-kivu", name: "Sud-Kivu", capital: "Bukavu", count: 12 },
+  { id: "kinshasa", name: "Kinshasa", capital: "Kinshasa", count: 24 },
+  { id: "haut-katanga", name: "Haut-Katanga", capital: "Lubumbashi", count: 15 },
+  { id: "kongo-central", name: "Kongo Central", capital: "Matadi", count: 8 },
+  { id: "ituri", name: "Ituri", capital: "Bunia", count: 6 },
+  { id: "lualaba", name: "Lualaba", capital: "Kolwezi", count: 7 },
+  { id: "kasai", name: "Kasaï", capital: "Kananga", count: 5 },
+]
+
+export const eventTypes: EventType[] = [
+  { id: "mariage", name: "Mariage", icon: "💍" },
+  { id: "dot", name: "Dot Traditionnelle", icon: "👑" },
+  { id: "conference", name: "Conférence", icon: "🎤" },
+  { id: "reunion", name: "Réunion / Séminaire", icon: "💼" },
+  { id: "anniversaire", name: "Anniversaire", icon: "🎂" },
+  { id: "bapteme", name: "Baptême", icon: "👶" },
+  { id: "graduation", name: "Collation / Graduation", icon: "🎓" },
+  { id: "concert", name: "Concert / Festival", icon: "🎶" },
+]
+
+export const categories: Category[] = [
+  { id: "all", name: "Tous les services", icon: "✨", count: 16, description: "Tous" },
+  { id: "salles", name: "Salles & Espaces", icon: "🏛️", count: 4, description: "Salles de fête, hôtels, jardins" },
+  { id: "traiteur", name: "Traiteur & Boissons", icon: "🍛", count: 3, description: "Buffet, barbecue, boissons" },
+  { id: "decoration", name: "Décoration", icon: "🎨", count: 2, description: "Déco salle, lumineuse, florale" },
+  { id: "sonorisation", name: "Son & Lumière", icon: "🔊", count: 2, description: "DJ, sono, podium, éclairage" },
+  { id: "photo", name: "Photo & Vidéo", icon: "📸", count: 2, description: "Photographe, vidéaste, drone" },
+  { id: "animation", name: "Animation & MC", icon: "🎤", count: 2, description: "Maître de cérémonie, animateur" },
+  { id: "materiel", name: "Location Matériel", icon: "🪑", count: 1, description: "Chaises, tentes, vaisselle" },
+]
+
+export const services: Service[] = [
+  {
+    id: "1",
+    name: "Salle Serena - Grande Salle de Fête Goma",
+    category: "salles",
+    province: "nord-kivu",
+    city: "Goma",
+    description: "Salle climatisée 500 places, parking sécurisé, groupe électrogène",
+    longDescription: "La référence à Goma pour vos grands événements. Salle climatisée de 600m², capacité 500 places assises, 800 cocktail. Parking 150 véhicules avec sécurité 24h, groupe électrogène 200KVA, loge mariés, cuisine équipée pour traiteur. Idéal mariage, conférence internationale, dot de prestige. Validation admin et visite gratuite.",
+    capacity: "500 places",
+    price: 800,
+    priceUnit: "/ jour",
+    rating: 4.9,
+    reviews: 127,
+    image: "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=600&h=400&fit=crop",
+    images: [
+      "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1469371670807-013ccf25f16a?w=600&h=400&fit=crop"
+    ],
+    provider: {
+      id: "p1",
+      name: "Serena Events Goma",
+      avatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=100&h=100&fit=crop",
+      verified: true,
+      adminApproved: true,
+      experience: "8 ans • 340 événements",
+      phone: "+243 976 459 970",
+      servicesCount: 3
+    },
+    location: "Goma, Himbi - Avenue du Lac",
+    features: ["Climatisation", "Groupe électrogène", "Parking sécurisé", "Cuisine traiteur", "Loge mariés", "Sonorisation incluse"],
+    popular: true,
+    instant: true,
+    eventTypes: ["mariage", "dot", "conference", "reunion"]
+  },
+  {
+    id: "2",
+    name: "Traiteur Mama Kivu - Buffet Traditionnel & Moderne",
+    category: "traiteur",
+    province: "nord-kivu",
+    city: "Goma",
+    description: "Buffet complet 100-1000 pers, spécialités kivuciennes + international",
+    longDescription: "Traiteur le plus demandé au Nord-Kivu. Buffet complet: pilau, sombe, fretin, brochettes, salades, gâteaux. Option boissons locales (Primus, Mützig) et jus naturels. Service serveurs en uniforme, vaisselle incluse, dégustation gratuite pour 2 personnes. Agréé par l'admin Smart Booking.",
+    capacity: "100-1000 pers",
+    price: 12,
+    priceUnit: "/ personne",
+    rating: 4.9,
+    reviews: 203,
+    image: "https://images.unsplash.com/photo-1555244162-803834f70033?w=600&h=400&fit=crop",
+    images: [
+      "https://images.unsplash.com/photo-1555244162-803834f70033?w=600&h=400&fit=crop"
+    ],
+    provider: {
+      id: "p2",
+      name: "Mama Kivu Traiteur",
+      avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop",
+      verified: true,
+      adminApproved: true,
+      experience: "12 ans • Traiteur officiel UN",
+      phone: "+243 994 123 456",
+      servicesCount: 2
+    },
+    location: "Goma, Katindo - Marché Alanine",
+    features: ["Dégustation offerte", "Serveurs inclus", "Vaisselle incluse", "Menu personnalisable", "Option végétarienne", "Livraison"],
+    popular: true,
+    instant: true,
+    eventTypes: ["mariage", "dot", "anniversaire", "reunion", "bapteme"]
+  },
+  {
+    id: "3",
+    name: "Elegance Déco Lubumbashi - Décoration Premium",
+    category: "decoration",
+    province: "haut-katanga",
+    city: "Lubumbashi",
+    description: "Décoration mariage haut de gamme, arche florale, éclairage féérique",
+    longDescription: "Décoratrice N°1 Haut-Katanga. Spécialiste mariage et dot. Arche florale naturelle, chemin de table en wax premium, éclairage guirlande + bougies, centre de table, housses chaises. Pack complet 300-800 invités. Approuvé admin après 45 événements réussis.",
+    capacity: "300-800 pers",
+    price: 650,
+    priceUnit: "/ événement",
+    rating: 5.0,
+    reviews: 89,
+    image: "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=600&h=400&fit=crop",
+    images: [
+      "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=600&h=400&fit=crop"
+    ],
+    provider: {
+      id: "p3",
+      name: "Elegance Events L'shi",
+      avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop",
+      verified: true,
+      adminApproved: true,
+      experience: "6 ans • 210 décos",
+      phone: "+243 810 987 654",
+      servicesCount: 1
+    },
+    location: "Lubumbashi, Golf - Avenue Kamanyola",
+    features: ["Fleurs naturelles", "Arche personnalisée", "Éclairage inclus", "Montage/démontage", "Essai déco offert"],
+    popular: true,
+    instant: false,
+    eventTypes: ["mariage", "dot", "anniversaire", "graduation"]
+  },
+  {
+    id: "4",
+    name: "Power Sound Bukavu - Sono, DJ, Podium, Lumière",
+    category: "sonorisation",
+    province: "sud-kivu",
+    city: "Bukavu",
+    description: "Sono 5000W, DJ pro, jeux de lumière, fumigène, groupe",
+    longDescription: "Leader sonorisation Kivu. Sono JBL pro 5000W, 2 DJ mix, podium LED, jeux de lumière, machine à fumée, micro sans fil. Playlist rumba, ndombolo, gospel, afrobeat. Ingénieur son inclus. Couverture Bukavu, Goma, Uvira. Validé admin.",
+    capacity: "Jusqu'à 1000 pers",
+    price: 350,
+    priceUnit: "/ jour",
+    rating: 4.8,
+    reviews: 156,
+    image: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&h=400&fit=crop",
+    images: [
+      "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&h=400&fit=crop"
+    ],
+    provider: {
+      id: "p4",
+      name: "Power Sound Systems",
+      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop",
+      verified: true,
+      adminApproved: true,
+      experience: "10 ans • Sono des grands concerts",
+      phone: "+243 995 234 567",
+      servicesCount: 2
+    },
+    location: "Bukavu, Ibanda - Av. Patrice Lumumba",
+    features: ["DJ pro inclus", "Podium LED", "Micro HF", "Groupe électrogène", "Playlist sur-mesure"],
+    instant: true,
+    eventTypes: ["mariage", "anniversaire", "concert", "conference"]
+  },
+  {
+    id: "5",
+    name: "Studio Malick Kinshasa - Photo & Vidéo 4K + Drone",
+    category: "photo",
+    province: "kinshasa",
+    city: "Kinshasa",
+    description: "Photographe mariage, vidéo 4K, drone, album premium, livraison 48h",
+    longDescription: "Studio le plus booké de Kinshasa. 2 photographes + 1 vidéaste + drone DJI. Photo 4K, vidéo cinéma, album 100 pages premium, clé USB, livraison 48h. Spécialiste mariage kinois et dot. Déplacement dans tout le pays. Admin approuvé avec portfolio 500 mariages.",
+    capacity: "Équipe 3 pers",
+    price: 500,
+    priceUnit: "/ événement",
+    rating: 5.0,
+    reviews: 234,
+    image: "https://images.unsplash.com/photo-1519741497674-611481863552?w=600&h=400&fit=crop",
+    images: [
+      "https://images.unsplash.com/photo-1519741497674-611481863552?w=600&h=400&fit=crop"
+    ],
+    provider: {
+      id: "p5",
+      name: "Studio Malick",
+      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop",
+      verified: true,
+      adminApproved: true,
+      experience: "15 ans • 500 mariages",
+      phone: "+243 820 345 678",
+      servicesCount: 2
+    },
+    location: "Kinshasa, Gombe - Av. de la Justice",
+    features: ["Drone 4K", "Album premium", "Livraison 48h", "2 photographes", "Vidéo cinéma", "Déplacement national"],
+    popular: true,
+    instant: false,
+    eventTypes: ["mariage", "dot", "anniversaire", "graduation", "bapteme"]
+  },
+  {
+    id: "6",
+    name: "MC Fabrice - Maître de Cérémonie Bilingue (FR/Swahili)",
+    category: "animation",
+    province: "nord-kivu",
+    city: "Goma",
+    description: "MC pro mariage, dot, conférence, humour, gestion protocole",
+    longDescription: "MC le plus demandé de Goma. Bilingue français/swahili, humour, gestion stricte du temps, protocole coutumier et moderne. 300 mariages animés, références: MONUSCO, UNICEF, Vodacom. Costume inclus, préparation avec couple. Validation admin Smart Booking.",
+    capacity: "Tout type",
+    price: 200,
+    priceUnit: "/ événement",
+    rating: 5.0,
+    reviews: 98,
+    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&h=400&fit=crop",
+    images: [
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&h=400&fit=crop"
+    ],
+    provider: {
+      id: "p6",
+      name: "Fabrice Habineza - MC",
+      avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop",
+      verified: true,
+      adminApproved: true,
+      experience: "7 ans • MC Vodacom & MONUSCO",
+      phone: "+243 976 459 970",
+      servicesCount: 1
+    },
+    location: "Goma - Disponible tout Nord-Kivu",
+    features: ["Bilingue FR/Swahili", "Protocole coutumier", "Préparation couple", "Costume inclus", "Gestion timing"],
+    popular: true,
+    instant: true,
+    eventTypes: ["mariage", "dot", "conference", "reunion", "graduation"]
+  },
+  {
+    id: "7",
+    name: "ShowBuzz Kinshasa - Salle de Conférence 300 places",
+    category: "salles",
+    province: "kinshasa",
+    city: "Kinshasa",
+    description: "Salle climatisée, projecteur 4K, traduction simultanée, streaming",
+    longDescription: "Salle pro pour conférences, séminaires, lancement produit. 300 places, clim, projecteur 4K, sonorisation, traduction simultanée FR/EN, streaming Facebook/Zoom, café pause inclus. Située Gombe, sécurisée. Idéal ONG, entreprises, ministères. Admin validé.",
+    capacity: "300 places",
+    price: 1200,
+    priceUnit: "/ jour",
+    rating: 4.9,
+    reviews: 67,
+    image: "https://images.unsplash.com/photo-1511578314322-379afb476865?w=600&h=400&fit=crop",
+    images: [
+      "https://images.unsplash.com/photo-1511578314322-379afb476865?w=600&h=400&fit=crop"
+    ],
+    provider: {
+      id: "p7",
+      name: "ShowBuzz Events",
+      avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=100&h=100&fit=crop",
+      verified: true,
+      adminApproved: true,
+      experience: "Salle des Nations Unies",
+      phone: "+243 810 111 222",
+      servicesCount: 2
+    },
+    location: "Kinshasa, Gombe - Immeuble CTC",
+    features: ["Traduction simultanée", "Streaming live", "Café pause", "Projecteur 4K", "Sécurité", "Parking"],
+    instant: true,
+    eventTypes: ["conference", "reunion", "graduation"]
+  },
+  {
+    id: "8",
+    name: "Location Tentes & Chaises VIP - Kinshasa & Provinces",
+    category: "materiel",
+    province: "kinshasa",
+    city: "Kinshasa",
+    description: "Tentes 100-1000 pers, chaises VIP, tables, vaisselle, groupe",
+    longDescription: "Location complète: tentes imperméables, chaises plastiques VIP + housses, tables rondes, vaisselle, nappes, groupe électrogène. Livraison + montage dans tout Kinshasa et provinces sur demande. Stock 5000 chaises. Validé admin.",
+    capacity: "100-1000 pers",
+    price: 3,
+    priceUnit: "/ chaise / jour",
+    rating: 4.7,
+    reviews: 145,
+    image: "https://images.unsplash.com/photo-1469371670807-013ccf25f16a?w=600&h=400&fit=crop",
+    images: [
+      "https://images.unsplash.com/photo-1469371670807-013ccf25f16a?w=600&h=400&fit=crop"
+    ],
+    provider: {
+      id: "p8",
+      name: "VIP Location Matadi",
+      avatar: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=100&h=100&fit=crop",
+      verified: true,
+      adminApproved: true,
+      experience: "12 ans • 1000+ locations",
+      phone: "+243 998 765 432",
+      servicesCount: 1
+    },
+    location: "Kinshasa, Limete - Livraison nationale",
+    features: ["Livraison + montage", "Tentes imperméables", "Chaises VIP", "Groupe inclus", "Stock 5000 chaises"],
+    instant: true,
+    eventTypes: ["mariage", "dot", "anniversaire", "reunion", "bapteme", "graduation"]
+  },
+  {
+    id: "9",
+    name: "Salle Jardin d'Eden - Bukavu - Vue Lac Kivu",
+    category: "salles",
+    province: "sud-kivu",
+    city: "Bukavu",
+    description: "Jardin 400 places, vue lac, cadre naturel, idéal dot & mariage",
+    longDescription: "Le plus beau jardin de Bukavu. Vue panoramique Lac Kivu, pelouse entretenue, fleurs naturelles, paillote VIP, cuisine extérieure, parking. Idéal dot traditionnelle, mariage champêtre, anniversaire. Capacité 400 assises, 600 cocktail. Validation admin.",
+    capacity: "400 places",
+    price: 600,
+    priceUnit: "/ jour",
+    rating: 4.9,
+    reviews: 76,
+    image: "https://images.unsplash.com/photo-1469371670807-013ccf25f16a?w=600&h=400&fit=crop",
+    images: [
+      "https://images.unsplash.com/photo-1469371670807-013ccf25f16a?w=600&h=400&fit=crop"
+    ],
+    provider: {
+      id: "p9",
+      name: "Jardin d'Eden Bukavu",
+      avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100&h=100&fit=crop",
+      verified: true,
+      adminApproved: true,
+      experience: "Jardin N°1 Sud-Kivu",
+      phone: "+243 995 876 543",
+      servicesCount: 1
+    },
+    location: "Bukavu, Nguba - Bord du Lac Kivu",
+    features: ["Vue Lac Kivu", "Jardin naturel", "Paillote VIP", "Cuisine extérieure", "Parking", "Groupe"],
+    popular: true,
+    eventTypes: ["mariage", "dot", "anniversaire", "bapteme"]
+  },
+  {
+    id: "10",
+    name: "DJ Francis Beat - Mix Rumba, Ndombolo, Afrobeat",
+    category: "sonorisation",
+    province: "kinshasa",
+    city: "Kinshasa",
+    description: "DJ pro mariage, dot, soirée, sono complète, animateur",
+    longDescription: "DJ légende Kinshasa. Spécialiste ambiance mariage kinois: rumba, ndombolo, afrobeat, gospel. Sono complète, jeux lumière, fumigène, micro animateur. 20 ans d'expérience, a animé mariage de Fally Ipupa. Admin approuvé.",
+    capacity: "Jusqu'à 800 pers",
+    price: 300,
+    priceUnit: "/ soirée",
+    rating: 5.0,
+    reviews: 189,
+    image: "https://images.unsplash.com/photo-1493676304819-0d7a8d026dcf?w=600&h=400&fit=crop",
+    images: [
+      "https://images.unsplash.com/photo-1493676304819-0d7a8d026dcf?w=600&h=400&fit=crop"
+    ],
+    provider: {
+      id: "p10",
+      name: "DJ Francis Beat",
+      avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&h=100&fit=crop",
+      verified: true,
+      adminApproved: true,
+      experience: "20 ans • DJ des stars",
+      phone: "+243 822 333 444",
+      servicesCount: 1
+    },
+    location: "Kinshasa - Déplacement national",
+    features: ["Sono complète", "Jeux lumière", "Micro animateur", "Playlist sur-mesure", "Fumigène"],
+    instant: true,
+    eventTypes: ["mariage", "dot", "anniversaire", "concert"]
+  },
+  {
+    id: "11",
+    name: "Beauty Queen Goma - Maquillage & Coiffure Mariée",
+    category: "decoration",
+    province: "nord-kivu",
+    city: "Goma",
+    description: "Maquillage mariée, coiffure, tenue traditionnelle, essayage",
+    longDescription: "Make-up artist N°1 Goma. Maquillage mariée longue tenue, coiffure wax, tenue traditionnelle kivucienne, essayage à domicile, faux cils, onglerie. Produits MAC, Fenty. Déplacement à domicile. Validé admin après 200 mariées satisfaites.",
+    capacity: "À domicile",
+    price: 120,
+    priceUnit: "/ mariée",
+    rating: 4.9,
+    reviews: 212,
+    image: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=600&h=400&fit=crop",
+    images: [
+      "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=600&h=400&fit=crop"
+    ],
+    provider: {
+      id: "p11",
+      name: "Beauty Queen Goma",
+      avatar: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=100&h=100&fit=crop",
+      verified: true,
+      adminApproved: true,
+      experience: "5 ans • 200 mariées",
+      phone: "+243 972 111 222",
+      servicesCount: 1
+    },
+    location: "Goma, Les Volcans - À domicile",
+    features: ["À domicile", "Produits MAC/Fenty", "Essayage offert", "Tenue traditionnelle", "Faux cils inclus"],
+    instant: true,
+    eventTypes: ["mariage", "dot", "graduation"]
+  },
+  {
+    id: "12",
+    name: "Sécurité Protocole VIP - Agents & Hôtesses",
+    category: "animation",
+    province: "haut-katanga",
+    city: "Lubumbashi",
+    description: "Agents sécurité, hôtesses protocole, gestion foule, parking",
+    longDescription: "Agence sécurité événementielle. Agents en costume, hôtesses protocole bilingues, gestion foule, contrôle accès, parking, fouille. Références: mining companies, ambassades, mariages VIP. Agréé admin.",
+    capacity: "5-50 agents",
+    price: 25,
+    priceUnit: "/ agent / jour",
+    rating: 4.8,
+    reviews: 54,
+    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&h=400&fit=crop",
+    images: [
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&h=400&fit=crop"
+    ],
+    provider: {
+      id: "p12",
+      name: "Secure Events L'shi",
+      avatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=100&h=100&fit=crop",
+      verified: true,
+      adminApproved: true,
+      experience: "Sécurité mining & VIP",
+      phone: "+243 900 123 456",
+      servicesCount: 1
+    },
+    location: "Lubumbashi, Lubumbashi - National",
+    features: ["Agents costumés", "Hôtesses protocole", "Gestion foule", "Contrôle accès", "Parking"],
+    instant: true,
+    eventTypes: ["mariage", "conference", "concert", "reunion"]
+  },
+  {
+    id: "13",
+    name: "Salle Colline - Vue Volcans - 300 places Goma",
+    category: "salles",
+    province: "nord-kivu",
+    city: "Goma",
+    description: "Salle avec vue volcans Nyiragongo, terrasse, cadre unique",
+    longDescription: "Salle unique à Goma avec vue directe sur volcans. Terrasse panoramique, salle vitrée, cadre Instagram, idéal mariage moderne. 300 places, traiteur partenaire, décoration incluse. En cours de validation admin (photos vérifiées).",
+    capacity: "300 places",
+    price: 500,
+    priceUnit: "/ jour",
+    rating: 4.8,
+    reviews: 34,
+    image: "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=600&h=400&fit=crop",
+    images: [
+      "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=600&h=400&fit=crop"
+    ],
+    provider: {
+      id: "p13",
+      name: "Colline Events",
+      avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop",
+      verified: false,
+      adminApproved: false,
+      experience: "Nouveau • 3 événements",
+      phone: "+243 976 000 111",
+      servicesCount: 1
+    },
+    location: "Goma, Mont Goma - Vue Volcans",
+    features: ["Vue volcans", "Terrasse panoramique", "Cadre Instagram", "Traiteur partenaire"],
+    popular: false,
+    instant: false,
+    eventTypes: ["mariage", "anniversaire", "graduation"]
+  },
+  {
+    id: "14",
+    name: "Photographe Goma - Drone Volcans & Lac",
+    category: "photo",
+    province: "nord-kivu",
+    city: "Goma",
+    description: "Photo drone volcans, lac Kivu, mariage aventure",
+    longDescription: "Photographe aventure Goma. Spécialiste drone avec vue volcans Nyiragongo et lac Kivu. Mariage aventure, dot au bord du lac, photos uniques. Vidéo 4K, album, livraison 72h. Validé admin.",
+    capacity: "Équipe 2 pers",
+    price: 350,
+    priceUnit: "/ événement",
+    rating: 4.9,
+    reviews: 67,
+    image: "https://images.unsplash.com/photo-1519741497674-611481863552?w=600&h=400&fit=crop",
+    images: [
+      "https://images.unsplash.com/photo-1519741497674-611481863552?w=600&h=400&fit=crop"
+    ],
+    provider: {
+      id: "p14",
+      name: "Kivu Drone Studio",
+      avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&h=100&fit=crop",
+      verified: true,
+      adminApproved: true,
+      experience: "Drone pro • 120 mariages",
+      phone: "+243 976 459 970",
+      servicesCount: 2
+    },
+    location: "Goma - Drone volcans & lac",
+    features: ["Drone volcans", "Vue lac Kivu", "Vidéo 4K", "Album inclus", "Aventure"],
+    instant: true,
+    eventTypes: ["mariage", "dot", "anniversaire"]
+  },
+  {
+    id: "15",
+    name: "Traiteur Royal - Kinshasa - Buffet 5 étoiles",
+    category: "traiteur",
+    province: "kinshasa",
+    city: "Kinshasa",
+    description: "Traiteur 5 étoiles, buffet international, chef français, 50-2000 pers",
+    longDescription: "Traiteur haut de gamme Kinshasa. Chef français, buffet international, fruits de mer, viandes importées, pâtisserie française. Service argenterie, serveurs en smoking, dégustation VIP. Clients: ambassades, présidence, multinationales. Admin approuvé.",
+    capacity: "50-2000 pers",
+    price: 35,
+    priceUnit: "/ personne",
+    rating: 5.0,
+    reviews: 89,
+    image: "https://images.unsplash.com/photo-1555244162-803834f70033?w=600&h=400&fit=crop",
+    images: [
+      "https://images.unsplash.com/photo-1555244162-803834f70033?w=600&h=400&fit=crop"
+    ],
+    provider: {
+      id: "p15",
+      name: "Royal Traiteur Kin",
+      avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&h=100&fit=crop",
+      verified: true,
+      adminApproved: true,
+      experience: "Traiteur ambassades",
+      phone: "+243 815 999 888",
+      servicesCount: 1
+    },
+    location: "Kinshasa, Gombe - Livraison VIP",
+    features: ["Chef français", "Argenterie", "Dégustation VIP", "Serveurs smoking", "Fruits de mer"],
+    popular: true,
+    eventTypes: ["mariage", "conference", "reunion", "graduation"]
+  },
+  {
+    id: "16",
+    name: "Jardin Boma - Matadi - Salle Plein Air Kongo Central",
+    category: "salles",
+    province: "kongo-central",
+    city: "Matadi",
+    description: "Jardin 600 places, fleuve Congo, cadre naturel, brise marine",
+    longDescription: "Jardin exceptionnel à Matadi avec vue fleuve Congo. 600 places, brise marine, palmiers, paillote, piste danse, cuisine extérieure. Idéal mariage, dot, anniversaire. Parking sécurisé, groupe électrogène. Validé admin.",
+    capacity: "600 places",
+    price: 450,
+    priceUnit: "/ jour",
+    rating: 4.8,
+    reviews: 43,
+    image: "https://images.unsplash.com/photo-1469371670807-013ccf25f16a?w=600&h=400&fit=crop",
+    images: [
+      "https://images.unsplash.com/photo-1469371670807-013ccf25f16a?w=600&h=400&fit=crop"
+    ],
+    provider: {
+      id: "p16",
+      name: "Jardin Boma Events",
+      avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop",
+      verified: true,
+      adminApproved: true,
+      experience: "Jardin N°1 Kongo Central",
+      phone: "+243 999 123 456",
+      servicesCount: 1
+    },
+    location: "Matadi, Kongo Central - Bord fleuve",
+    features: ["Vue fleuve Congo", "Brise marine", "Jardin naturel", "Piste danse", "Paillote VIP"],
+    eventTypes: ["mariage", "dot", "anniversaire", "bapteme"]
+  }
+]
