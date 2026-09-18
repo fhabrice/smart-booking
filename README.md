@@ -1,10 +1,10 @@
-# Smart Booking ✨ — Réservation intelligente
+# Smart Booking RDC ✨🇨🇩 — Réservation de services de cérémonie
 
-> Réservez en 30 secondes, pas en 30 minutes.
+> Tous les services de votre cérémonie, réservés en 30 secondes.
 
-**Smart Booking** est une plateforme moderne de réservation de services (beauté, bien-être, business, coaching) construite avec **Next.js 16**, **Tailwind CSS v4**, **TypeScript** et une UX ultra-léche.
+**Smart Booking RDC** est une plateforme congolaise de réservation de **tous les services nécessaires à l'organisation d'une cérémonie** : mariage, dotation, baptême/doto, anniversaire, funérailles, événement d'entreprise. Construite avec **Next.js 16**, **Tailwind CSS v4**, **TypeScript** et une UX ultra-léche.
 
-Inspirée par Linear, Airbnb et Revolut — focus sur la vitesse, la clarté et la confiance.
+Basée en **RD Congo** 🇨🇩 — prix en **USD + Franc Congolais (FC)**, paiement **M-Pesa / Orange Money / Airtel Money**.
 
 ---
 
@@ -15,139 +15,73 @@ Inspirée par Linear, Airbnb et Revolut — focus sur la vitesse, la clarté et 
 - **Tailwind CSS v4**
 - **TypeScript**
 - **Lucide React** — icons
-- **Framer Motion** — animations
-- **date-fns** — dates
-- **LocalStorage** — persistance bookings (sans backend pour la démo)
+- **date-fns** — dates (locale fr)
+- **LocalStorage** — persistance cérémonies + réservations (démo sans backend)
+- Images locales (`public/images/`) — fonctionne hors-ligne
 
 ---
 
 ## ✨ Fonctionnalités
 
 ### 🏠 Page d'accueil
-- Hero avec gradient + social proof
-- Barre de recherche intelligente (service + localisation + date)
-- Filtres catégories avec compteurs
-- Grille services avec card premium (hover effects, badges Instant/Populaire)
-- Section "Comment ça marche" (3 étapes)
-- Stats temps réel
+- Hero immersif (mariage traditionnel congolais)
+- Recherche : service + **filtre par ville** (Kinshasa, Lubumbashi, Goma, Bukavu, Kisangani, Matadi, Mbuji-Mayi, Kananga)
+- 9 catégories de services : 🏛️ Salles, 🍲 Traiteur, 🎀 Décoration, 🔊 Sono/DJ, 📸 Photo/Vidéo, 💄 Beauté & Mode, 🚗 Transport, 🎤 Animation, 🎂 Gâteaux
+- **20 prestataires vérifiés** avec prix USD + équivalent FC
+- Section « Quelle cérémonie préparez-vous ? » (6 types)
+
+### 🎊 Planificateur de cérémonie `/events/new`
+- Choix du type (mariage, dotation, anniversaire, baptême/doto, funérailles, entreprise)
+- Date, heure, ville, lieu, invités, budget USD, notes
+- Génère la **checklist complète des prestations** selon le type
+
+### 📊 Tableau de bord cérémonie `/events/[id]`
+- Barre de progression des prestations réservées
+- Suivi du **budget** (engagé vs budget total)
+- Checklist interactive → recommandations de prestataires de **votre ville en premier**
+- **Déroulé du jour J** (timeline chronologique)
+- Gestion/annulation des réservations de l'événement
 
 ### 🔍 Service Detail `/services/[id]`
-- Gallery + badges
-- Infos prestataire vérifié
-- Description longue + inclusions
-- Recommandation IA
-- Avis clients
-- **Booking Widget** sticky :
-  - Calendrier 14 jours
-  - Créneaux temps réel (8h-19h, 30min)
-  - Détection conflits (localStorage)
-  - Formulaire client
-  - Résumé prix
-  - Confirmation animée + redirection
+- Gallery + badges Populaire/Instantané
+- Infos prestataire vérifié + inclusions
+- Avis clients (mariage, dotation, doto…)
+- **Booking Widget** :
+  - Calendrier 14 jours + créneaux 6h–23h
+  - Détection de conflits (localStorage)
+  - **Rattachement à une cérémonie** existante
+  - Formulaire client : nom + **téléphone** (+243)
+  - **Paiement Mobile Money** : M-Pesa, Orange Money, Airtel Money
+  - **Acompte 50 %** (USD + FC) / solde sur place
+  - Référence de réservation `SB-XXXXXXX`
 
 ### 📅 Mes Réservations `/bookings`
-- Liste réservations actives
+- Totaux : engagements, acomptes, solde sur place (USD + FC)
+- Lien vers la cérémonie rattachée
 - Annulation instantanée
-- Historique annulées
-- Support 24/7 CTA
-
-### 🧠 Smart Features
-- **IA de recommandation** (UI) : suggère meilleur créneau
-- **Instant Booking** : sans appel
-- **Vérification** : prestataires vérifiés
-- **Conflit detection** : pas de double booking
-- **Persistance** : localStorage + Context API
 
 ---
 
-## 📦 Installation
+## 💰 Devises
+
+| Affichage | Exemple |
+|---|---|
+| Dollar américain (principal) | $450 |
+| Franc congolais (taux indicatif 1 USD ≈ 2 850 FC) | ≈ 1 282 500 FC |
+
+---
+
+## 🛠️ Démarrage
 
 ```bash
-git clone https://github.com/fhabrice/smart-booking
-cd smart-booking
 npm install
 npm run dev
 ```
 
-Ouvre http://localhost:3000
+Ouvrir [http://localhost:3000](http://localhost:3000).
 
 ---
 
-## 🛠️ Scripts
+## 🗺️ Villes couvertes
 
-```bash
-npm run dev     # Dev server Turbopack
-npm run build   # Build prod
-npm run start   # Start prod
-npm run lint    # ESLint
-```
-
----
-
-## 📁 Structure
-
-```
-src/
-├── app/
-│   ├── page.tsx              # Landing + search + grid
-│   ├── layout.tsx            # Root layout + provider
-│   ├── globals.css           # Tailwind v4
-│   ├── bookings/page.tsx     # Mes réservations
-│   └── services/[id]/page.tsx # Detail + booking
-├── components/
-│   ├── header.tsx
-│   ├── service-card.tsx
-│   ├── search-bar.tsx
-│   ├── booking-widget.tsx
-│   └── ui/button.tsx, badge.tsx
-└── lib/
-    ├── data.ts               # 12 services mockés
-    ├── types.ts
-    ├── utils.ts              # cn, formatPrice, timeSlots
-    └── booking-context.tsx   # Context + localStorage
-```
-
----
-
-## 🎨 Design System
-
-- **Radius** : 24px cards, full buttons (pill)
-- **Couleurs** : zinc-900 primary, violet accent, emerald success
-- **Shadows** : soft, colored
-- **Typography** : Geist Sans (fallback system), tight tracking
-- **Inspiration** : Linear.app + Airbnb + Stripe
-
----
-
-## 🔮 Roadmap
-
-- [ ] Auth (Clerk / NextAuth)
-- [ ] Paiement Stripe
-- [ ] Vraie DB (Prisma + Postgres)
-- [ ] Notifications email / SMS
-- [ ] Dashboard prestataire
-- [ ] IA vraie (recommandation embeddings)
-- [ ] PWA + offline
-- [ ] i18n EN/FR
-
----
-
-## 📸 Screenshots
-
-> Landing : hero + search + categories
-> Service : gallery + booking widget
-> Bookings : liste + annulation
-
----
-
-## 👨‍💻 Auteur
-
-Fait avec ❤️ à Paris — 2026
-
-> "Le meilleur code est celui que l'utilisateur ne voit pas. Juste la réservation qui marche."
-
----
-
-## 📄 Licence
-
-MIT
+Kinshasa · Lubumbashi · Goma · Bukavu · Kisangani · Matadi · Mbuji-Mayi · Kananga
