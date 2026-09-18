@@ -1,63 +1,105 @@
 "use client"
 
 import React, { createContext, useContext, useEffect, useState } from "react"
-import { Booking, Service } from "./types"
+import { Booking, CeremonyEvent, Service } from "./types"
+
+type NewBooking = Omit<Booking, "id" | "createdAt" | "status">
 
 type BookingContextType = {
   bookings: Booking[]
-  addBooking: (booking: Omit<Booking, 'id' | 'createdAt' | 'status'>) => Booking
+  events: CeremonyEvent[]
+  mounted: boolean
+  addBooking: (booking: NewBooking) => Booking
   cancelBooking: (id: string) => void
-  getBookingsByService: (serviceId: string) => Booking[]
   isSlotBooked: (date: string, time: string, serviceId: string) => boolean
+  addEvent: (event: Omit<CeremonyEvent, "id" | "createdAt">) => CeremonyEvent
+  getEvent: (id: string) => CeremonyEvent | undefined
+  getEventBookings: (eventId: string) => Booking[]
+  eventBudgetUsed: (eventId: string) => number
 }
 
 const BookingContext = createContext<BookingContextType | undefined>(undefined)
 
+const BOOKINGS_KEY = "sb-rdc-bookings"
+const EVENTS_KEY = "sb-rdc-events"
+
 export function BookingProvider({ children }: { children: React.ReactNode }) {
   const [bookings, setBookings] = useState<Booking[]>([])
+  const [events, setEvents] = useState<CeremonyEvent[]>([])
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    const saved = localStorage.getItem('smart-bookings')
-    if (saved) {
-      try {
-        setBookings(JSON.parse(saved))
-      } catch {}
-    }
+    try {
+      const savedBookings = localStorage.getItem(BOOKINGS_KEY)
+      if (savedBookings) setBookings(JSON.parse(savedBookings))
+      const savedEvents = localStorage.getItem(EVENTS_KEY)
+      if (savedEvents) setEvents(JSON.parse(savedEvents))
+    } catch {}
     setMounted(true)
   }, [])
 
   useEffect(() => {
-    if (mounted) {
-      localStorage.setItem('smart-bookings', JSON.stringify(bookings))
-    }
+    if (mounted) localStorage.setItem(BOOKINGS_KEY, JSON.stringify(bookings))
   }, [bookings, mounted])
 
-  const addBooking = (data: Omit<Booking, 'id' | 'createdAt' | 'status'>) => {
+  useEffect(() => {
+    if (mounted) localStorage.setItem(EVENTS_KEY, JSON.stringify(events))
+  }, [events, mounted])
+
+  const addBooking = (data: NewBooking) => {
     const newBooking: Booking = {
       ...data,
       id: Math.random().toString(36).slice(2, 9),
       createdAt: new Date().toISOString(),
-      status: 'confirmed'
+      status: "confirmed",
     }
-    setBookings(prev => [newBooking, ...prev])
+    setBookings((prev) => [newBooking, ...prev])
     return newBooking
   }
 
   const cancelBooking = (id: string) => {
-    setBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'cancelled' as const } : b))
-  }
-
-  const getBookingsByService = (serviceId: string) => {
-    return bookings.filter(b => b.serviceId === serviceId && b.status !== 'cancelled')
+    setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, status: "cancelled" as const } : b)))
   }
 
   const isSlotBooked = (date: string, time: string, serviceId: string) => {
-    return bookings.some(b => b.date === date && b.time === time && b.serviceId === serviceId && b.status !== 'cancelled')
+    return bookings.some(
+      (b) => b.date === date && b.time === time && b.serviceId === serviceId && b.status !== "cancelled"
+    )
   }
 
+  const addEvent = (data: Omit<CeremonyEvent, "id" | "createdAt">) => {
+    const newEvent: CeremonyEvent = {
+      ...data,
+      id: Math.random().toString(36).slice(2, 9),
+      createdAt: new Date().toISOString(),
+    }
+    setEvents((prev) => [newEvent, ...prev])
+    return newEvent
+  }
+
+  const getEvent = (id: string) => events.find((e) => e.id === id)
+
+  const getEventBookings = (eventId: string) =>
+    bookings.filter((b) => b.eventId === eventId && b.status !== "cancelled")
+
+  const eventBudgetUsed = (eventId: string) =>
+    getEventBookings(eventId).reduce((sum, b) => sum + b.price, 0)
+
   return (
-    <BookingContext.Provider value={{ bookings, addBooking, cancelBooking, getBookingsByService, isSlotBooked }}>
+    <BookingContext.Provider
+      value={{
+        bookings,
+        events,
+        mounted,
+        addBooking,
+        cancelBooking,
+        isSlotBooked,
+        addEvent,
+        getEvent,
+        getEventBookings,
+        eventBudgetUsed,
+      }}
+    >
       {children}
     </BookingContext.Provider>
   )
@@ -65,6 +107,15 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
 
 export function useBookings() {
   const ctx = useContext(BookingContext)
-  if (!ctx) throw new Error('useBookings must be used within BookingProvider')
+  if (!ctx) throw new Error("useBookings must be used within BookingProvider")
   return ctx
 }
+
+/** Total USD des réservations d'une cérémonie + estimation FC */
+export function serviceTotalForEvent(bookings: Booking[], eventId: string) {
+  return bookings
+    .filter((b) => b.eventId === eventId && b.status !== "cancelled")
+    .reduce((sum, b) => sum + b.price, 0)
+}
+
+export type { Service }
