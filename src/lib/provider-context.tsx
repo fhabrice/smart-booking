@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react"
 import {
+  PayoutRequest,
   ProviderAccount,
   ProviderProfileData,
   ProviderStatus,
@@ -15,6 +16,7 @@ const OVERRIDES_KEY = "sb-rdc-provider-overrides"
 const CUSTOM_SERVICES_KEY = "sb-rdc-custom-services"
 const PROVIDER_PROFILES_KEY = "sb-rdc-provider-profiles"
 const PROVIDER_ACCOUNTS_KEY = "sb-rdc-provider-accounts"
+const PROVIDER_PAYOUTS_KEY = "sb-rdc-provider-payouts"
 
 export const INITIAL_ACCOUNTS: ProviderAccount[] = [
   {
@@ -136,6 +138,33 @@ export const INITIAL_ACCOUNTS: ProviderAccount[] = [
   },
 ]
 
+export const INITIAL_PAYOUTS: PayoutRequest[] = [
+  {
+    id: "payout-01",
+    providerName: "Grand Salon Kin",
+    amountUSD: 300,
+    amountFC: 855000,
+    method: "M-Pesa",
+    phoneNumber: "+243 821 110 021",
+    status: "paid",
+    requestedAt: "2026-09-15T10:00:00.000Z",
+    processedAt: "2026-09-15T14:30:00.000Z",
+    transactionRef: "MPESA-992384-KIN",
+    notes: "Acomptes réservations mariage week-end",
+  },
+  {
+    id: "payout-02",
+    providerName: "Saveurs du Fleuve Traiteur",
+    amountUSD: 450,
+    amountFC: 1282500,
+    method: "Orange Money",
+    phoneNumber: "+243 854 321 009",
+    status: "pending",
+    requestedAt: "2026-09-18T16:20:00.000Z",
+    notes: "Retrait acomptes buffet VIP",
+  },
+]
+
 type ProviderSpaceContextType = {
   mounted: boolean
   session: string | null
@@ -159,6 +188,17 @@ type ProviderSpaceContextType = {
   rejectService: (serviceId: string, feedback: string) => void
   updateServiceAdmin: (serviceId: string, patch: Partial<ServiceOverride>) => void
   deleteService: (serviceId: string) => void
+  // Retraits Mobile Money
+  payoutRequests: PayoutRequest[]
+  requestPayout: (data: {
+    providerName: string
+    amountUSD: number
+    method: "M-Pesa" | "Orange Money" | "Airtel Money"
+    phoneNumber: string
+    notes?: string
+  }) => PayoutRequest
+  processPayout: (payoutId: string, transactionRef: string) => void
+  rejectPayout: (payoutId: string, notes?: string) => void
 }
 
 const ProviderSpaceContext = createContext<ProviderSpaceContextType | undefined>(undefined)
@@ -192,6 +232,7 @@ export function ProviderSpaceProvider({ children }: { children: React.ReactNode 
   const [overrides, setOverrides] = useState<Record<string, ServiceOverride>>({})
   const [customServices, setCustomServices] = useState<Service[]>([])
   const [profiles, setProfiles] = useState<Record<string, ProviderProfileData>>({})
+  const [payoutRequests, setPayoutRequests] = useState<PayoutRequest[]>(INITIAL_PAYOUTS)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -202,7 +243,6 @@ export function ProviderSpaceProvider({ children }: { children: React.ReactNode 
       const savedAccounts = localStorage.getItem(PROVIDER_ACCOUNTS_KEY)
       if (savedAccounts) {
         const parsed: ProviderAccount[] = JSON.parse(savedAccounts)
-        // Fusionner avec les initiaux pour garder les 6 démo tout en préservant les modifications
         const merged = [...INITIAL_ACCOUNTS]
         for (const p of parsed) {
           const idx = merged.findIndex((m) => m.name.toLowerCase() === p.name.toLowerCase())
@@ -217,6 +257,10 @@ export function ProviderSpaceProvider({ children }: { children: React.ReactNode 
       if (savedCustom) setCustomServices(JSON.parse(savedCustom))
       const savedProfiles = localStorage.getItem(PROVIDER_PROFILES_KEY)
       if (savedProfiles) setProfiles(JSON.parse(savedProfiles))
+      const savedPayouts = localStorage.getItem(PROVIDER_PAYOUTS_KEY)
+      if (savedPayouts) {
+        setPayoutRequests(JSON.parse(savedPayouts))
+      }
     } catch {}
     setMounted(true)
   }, [])
@@ -244,6 +288,10 @@ export function ProviderSpaceProvider({ children }: { children: React.ReactNode 
     if (mounted) localStorage.setItem(PROVIDER_PROFILES_KEY, JSON.stringify(profiles))
   }, [profiles, mounted])
 
+  useEffect(() => {
+    if (mounted) localStorage.setItem(PROVIDER_PAYOUTS_KEY, JSON.stringify(payoutRequests))
+  }, [payoutRequests, mounted])
+
   const login = (providerName: string) => {
     setSession(providerName)
   }
@@ -264,7 +312,7 @@ export function ProviderSpaceProvider({ children }: { children: React.ReactNode 
     const newAccount: ProviderAccount = {
       ...data,
       id: `prov-${Math.random().toString(36).slice(2, 9)}`,
-      status: "pending", // nouveau prestataire en attente de validation admin
+      status: "pending",
       rating: 5.0,
       reviewsCount: 0,
       avatar: `/images/avatar-${avatarIndex}.jpg`,
@@ -312,7 +360,7 @@ export function ProviderSpaceProvider({ children }: { children: React.ReactNode 
       ...data,
       id: `custom-${Math.random().toString(36).slice(2, 9)}`,
       custom: true,
-      adminApprovalStatus: "pending", // En attente d'approbation admin
+      adminApprovalStatus: "pending",
     }
     setCustomServices((prev) => [newService, ...prev])
     return newService
@@ -331,7 +379,6 @@ export function ProviderSpaceProvider({ children }: { children: React.ReactNode 
     setProfiles((prev) => ({ ...prev, [providerName]: { ...prev[providerName], ...patch } }))
   }
 
-  // Modération admin des prestations
   const approveService = (serviceId: string) => {
     setOverrides((prev) => ({
       ...prev,
@@ -360,6 +407,59 @@ export function ProviderSpaceProvider({ children }: { children: React.ReactNode 
     }))
   }
 
+  // Gestion des retraits Mobile Money
+  const requestPayout = (data: {
+    providerName: string
+    amountUSD: number
+    method: "M-Pesa" | "Orange Money" | "Airtel Money"
+    phoneNumber: string
+    notes?: string
+  }): PayoutRequest => {
+    const newPayout: PayoutRequest = {
+      id: `payout-${Math.random().toString(36).slice(2, 9)}`,
+      providerName: data.providerName,
+      amountUSD: data.amountUSD,
+      amountFC: Math.round(data.amountUSD * 2850),
+      method: data.method,
+      phoneNumber: data.phoneNumber,
+      status: "pending",
+      requestedAt: new Date().toISOString(),
+      notes: data.notes,
+    }
+    setPayoutRequests((prev) => [newPayout, ...prev])
+    return newPayout
+  }
+
+  const processPayout = (payoutId: string, transactionRef: string) => {
+    setPayoutRequests((prev) =>
+      prev.map((p) =>
+        p.id === payoutId
+          ? {
+              ...p,
+              status: "paid" as const,
+              processedAt: new Date().toISOString(),
+              transactionRef,
+            }
+          : p
+      )
+    )
+  }
+
+  const rejectPayout = (payoutId: string, notes?: string) => {
+    setPayoutRequests((prev) =>
+      prev.map((p) =>
+        p.id === payoutId
+          ? {
+              ...p,
+              status: "rejected" as const,
+              processedAt: new Date().toISOString(),
+              notes: notes || p.notes,
+            }
+          : p
+      )
+    )
+  }
+
   return (
     <ProviderSpaceContext.Provider
       value={{
@@ -384,6 +484,10 @@ export function ProviderSpaceProvider({ children }: { children: React.ReactNode 
         rejectService,
         updateServiceAdmin,
         deleteService,
+        payoutRequests,
+        requestPayout,
+        processPayout,
+        rejectPayout,
       }}
     >
       {children}
@@ -397,7 +501,6 @@ export function useProviderSpace() {
   return ctx
 }
 
-/** Toutes les prestations combinées (catalogue + créées), avec modifications appliquées */
 export function useMergedServices(): Service[] {
   const { overrides, customServices } = useProviderSpace()
   return useMemo(
@@ -406,7 +509,6 @@ export function useMergedServices(): Service[] {
   )
 }
 
-/** Prestations actives et approuvées visibles sur la vitrine client publique */
 export function usePublicServices(): Service[] {
   const merged = useMergedServices()
   const { accounts } = useProviderSpace()
@@ -420,13 +522,11 @@ export function usePublicServices(): Service[] {
       if (s.isDeleted) return false
       if (s.paused) return false
       if (suspendedProviders.has(s.provider.name.toLowerCase())) return false
-      // Seuls les services approuvés sont visibles côté client
       return s.adminApprovalStatus === "approved"
     })
   }, [merged, suspendedProviders])
 }
 
-/** Prestations appartenant au prestataire connecté (avec tous les statuts d'approbation) */
 export function useProviderServices(providerName: string): Service[] {
   const merged = useMergedServices()
   return useMemo(
@@ -438,7 +538,6 @@ export function useProviderServices(providerName: string): Service[] {
   )
 }
 
-/** Profil d'un prestataire : coordonnées saisies dans l'espace prestataires */
 export function useProviderProfile(providerName: string | null): ProviderProfileData {
   const { profiles } = useProviderSpace()
   return (providerName && profiles[providerName]) || {}

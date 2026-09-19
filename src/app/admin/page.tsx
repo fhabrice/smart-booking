@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { useProviderSpace, useMergedServices } from "@/lib/provider-context"
 import { useBookings } from "@/lib/booking-context"
@@ -16,7 +17,14 @@ import {
   MessageSquare,
   Sparkles,
   Phone,
+  Smartphone,
 } from "lucide-react"
+
+function generateTransactionRef(method: string): string {
+  const prefix = method === "M-Pesa" ? "MPESA" : method === "Orange Money" ? "OM" : "AIRTEL"
+  const suffix = Date.now().toString().slice(-6)
+  return `${prefix}-${suffix}-RDC`
+}
 
 export default function AdminDashboardPage() {
   const {
@@ -24,6 +32,9 @@ export default function AdminDashboardPage() {
     updateAccountStatus,
     approveService,
     rejectService,
+    payoutRequests,
+    processPayout,
+    rejectPayout,
   } = useProviderSpace()
   const allServices = useMergedServices()
   const { bookings } = useBookings()
@@ -42,12 +53,29 @@ export default function AdminDashboardPage() {
     (s) => !s.isDeleted && s.adminApprovalStatus === "approved"
   )
 
+  // Retraits Mobile Money en attente
+  const pendingPayouts = (payoutRequests || []).filter(
+    (p) => p.status === "pending" || p.status === "processing"
+  )
+
   // Finances globales
   const confirmedBookings = bookings.filter((b) => b.status !== "cancelled")
   const globalVolume = confirmedBookings.reduce((sum, b) => sum + b.price, 0)
   const platformCommission = Math.round(globalVolume * 0.1) // 10%
 
   const adminThreads = getAllAdminThreads()
+
+  // Quick payout validation state
+  const [quickPayRef, setQuickPayRef] = useState<Record<string, string>>({})
+
+  const handleQuickValidatePayout = (id: string, method: string) => {
+    const existing = quickPayRef[id]
+    const ref =
+      existing && existing.trim()
+        ? existing.trim()
+        : generateTransactionRef(method)
+    processPayout(id, ref)
+  }
 
   return (
     <div className="space-y-8">
@@ -63,7 +91,16 @@ export default function AdminDashboardPage() {
           </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Link href="/admin/payouts">
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
+            >
+              <Smartphone className="h-4 w-4 text-emerald-600" /> Retraits Mobile Money ({pendingPayouts.length})
+            </Button>
+          </Link>
           <Link href="/admin/services">
             <Button size="sm" className="gap-2 bg-gradient-to-r from-amber-500 to-red-500 hover:from-amber-600 hover:to-red-600">
               <Store className="h-4 w-4" /> Modérer les prestations ({pendingServices.length})
@@ -258,6 +295,99 @@ export default function AdminDashboardPage() {
                     onClick={() =>
                       rejectService(service.id, "Description insuffisante ou tarif à préciser")
                     }
+                    className="text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                  >
+                    <X className="h-3.5 w-3.5" /> Rejeter
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* File d'attente 3 : Retraits Mobile Money en attente */}
+      {pendingPayouts.length > 0 && (
+        <div className="rounded-[28px] border border-emerald-300 bg-emerald-50/60 p-6 dark:border-emerald-900/50 dark:bg-emerald-950/20 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Smartphone className="h-5 w-5 text-emerald-600" />
+              <div>
+                <h3 className="font-bold text-base text-emerald-950 dark:text-emerald-100">
+                  Demandes de Retraits Mobile Money ({pendingPayouts.length})
+                </h3>
+                <p className="text-xs text-emerald-800/80 dark:text-emerald-300/80">
+                  Les prestataires ont demandé le virement de leurs acomptes vers leur numéro M-Pesa, Orange ou Airtel.
+                </p>
+              </div>
+            </div>
+            <Link href="/admin/payouts" className="text-xs font-bold text-emerald-800 underline dark:text-emerald-300">
+              Voir tous les retraits →
+            </Link>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            {pendingPayouts.map((payout) => (
+              <div
+                key={payout.id}
+                className="flex flex-col justify-between rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                        {payout.method}
+                      </span>
+                      <h4 className="font-bold text-sm mt-1">{payout.providerName}</h4>
+                      <div className="text-xs font-mono font-bold text-zinc-600 dark:text-zinc-400">
+                        {payout.phoneNumber}
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <div className="text-base font-black text-emerald-600 dark:text-emerald-400">
+                        {formatPrice(payout.amountUSD)}
+                      </div>
+                      <div className="text-[11px] font-semibold text-zinc-500">
+                        ≈ {formatPriceFC(payout.amountUSD)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {payout.notes && (
+                    <p className="mt-2 text-xs text-zinc-500 italic bg-zinc-50 p-2 rounded-xl dark:bg-zinc-800/50">
+                      Motif : &ldquo;{payout.notes}&rdquo;
+                    </p>
+                  )}
+
+                  <div className="mt-2">
+                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                      Réf. Mobile Money (facultatif / auto si vide)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: MPESA-738912-RDC"
+                      value={quickPayRef[payout.id] || ""}
+                      onChange={(e) =>
+                        setQuickPayRef((prev) => ({ ...prev, [payout.id]: e.target.value }))
+                      }
+                      className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-2.5 py-1.5 text-xs font-mono font-bold focus:border-emerald-500 focus:bg-white focus:outline-none dark:border-zinc-700 dark:bg-zinc-800"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-3 flex gap-2 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+                  <Button
+                    size="sm"
+                    onClick={() => handleQuickValidatePayout(payout.id, payout.method)}
+                    className="flex-1 gap-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                  >
+                    <Check className="h-3.5 w-3.5" /> Valider virement Mobile Money
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => rejectPayout(payout.id, "Numéro ou titulaire non conforme")}
                     className="text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
                   >
                     <X className="h-3.5 w-3.5" /> Rejeter

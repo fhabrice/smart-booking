@@ -198,6 +198,31 @@ export interface ChatMessage {
   read?: boolean
 }
 
+/** Demande de retrait Mobile Money par un prestataire */
+export interface PayoutRequest {
+  id: string
+  providerName: string
+  amountUSD: number
+  amountFC: number
+  method: "M-Pesa" | "Orange Money" | "Airtel Money"
+  phoneNumber: string
+  status: "pending" | "processing" | "processed" | "paid" | "rejected"
+  requestedAt: string
+  processedAt?: string
+  transactionRef?: string
+  notes?: string
+  adminNotes?: string
+}
+
+/** Journal d'activité de la plateforme pour l'administration */
+export interface ActivityLogItem {
+  id: string
+  type: "provider_register" | "service_submit" | "service_approve" | "service_reject" | "booking_created" | "payout_request"
+  title: string
+  description: string
+  timestamp: string
+}
+
 /** Thèmes pour le générateur d'affiches */
 export type FlyerTheme = "gold" | "dark" | "rose" | "emerald"
 

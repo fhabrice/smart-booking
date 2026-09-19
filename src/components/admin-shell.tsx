@@ -13,6 +13,7 @@ import {
   Sparkles,
   Lock,
   Eye,
+  Smartphone,
 } from "lucide-react"
 import { Button } from "./ui/button"
 import { useState } from "react"
@@ -22,13 +23,14 @@ const adminNav = [
   { href: "/admin", label: "Tableau de bord", icon: LayoutDashboard },
   { href: "/admin/providers", label: "Prestataires", icon: Users, badgeKey: "pendingProviders" },
   { href: "/admin/services", label: "Modération Services", icon: Store, badgeKey: "pendingServices" },
+  { href: "/admin/payouts", label: "Retraits Mobile Money", icon: Smartphone, badgeKey: "pendingPayouts" },
   { href: "/admin/messages", label: "Messagerie Prestataires", icon: MessageSquare },
 ]
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { isAdmin, login, logout, mounted } = useAdmin()
-  const { accounts, customServices, overrides } = useProviderSpace()
+  const { accounts, customServices, overrides, payoutRequests } = useProviderSpace()
 
   const [pinInput, setPinInput] = useState("")
   const [pinError, setPinError] = useState("")
@@ -40,6 +42,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     const status = o?.adminApprovalStatus ?? s.adminApprovalStatus ?? "pending"
     return status === "pending"
   }).length
+  const pendingPayoutsCount = (payoutRequests || []).filter(
+    (p) => p.status === "pending" || p.status === "processing"
+  ).length
 
   if (!mounted) {
     return (
@@ -144,14 +149,18 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                   </div>
                 </div>
 
-                <div className="mt-4 grid grid-cols-2 gap-2 text-center text-xs">
+                <div className="mt-4 grid grid-cols-3 gap-1.5 text-center text-xs">
                   <div className="rounded-xl bg-amber-50 p-2 dark:bg-amber-950/40">
                     <div className="font-bold text-amber-700 dark:text-amber-300">{pendingServicesCount}</div>
-                    <div className="text-[10px] text-zinc-500">Services à modérer</div>
+                    <div className="text-[9px] text-zinc-500 leading-tight">Services</div>
                   </div>
                   <div className="rounded-xl bg-purple-50 p-2 dark:bg-purple-950/40">
                     <div className="font-bold text-purple-700 dark:text-purple-300">{pendingProvidersCount}</div>
-                    <div className="text-[10px] text-zinc-500">Prestataires à valider</div>
+                    <div className="text-[9px] text-zinc-500 leading-tight">Prestataires</div>
+                  </div>
+                  <div className="rounded-xl bg-emerald-50 p-2 dark:bg-emerald-950/40">
+                    <div className="font-bold text-emerald-700 dark:text-emerald-300">{pendingPayoutsCount}</div>
+                    <div className="text-[9px] text-zinc-500 leading-tight">Retraits</div>
                   </div>
                 </div>
               </div>
@@ -165,6 +174,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                       ? pendingServicesCount
                       : item.badgeKey === "pendingProviders" && pendingProvidersCount > 0
                       ? pendingProvidersCount
+                      : item.badgeKey === "pendingPayouts" && pendingPayoutsCount > 0
+                      ? pendingPayoutsCount
                       : null
 
                   return (
