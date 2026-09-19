@@ -25,7 +25,7 @@ import {
 } from "lucide-react"
 
 export default function ProviderProfilePage() {
-  const { session, updateProfile } = useProviderSpace()
+  const { session, currentAccount, updateProfile, updateAccount } = useProviderSpace()
   const { bookings } = useBookings()
   const providerServices = useProviderServices(session ?? "")
   const savedProfile = useProviderProfile(session)
@@ -40,12 +40,12 @@ export default function ProviderProfilePage() {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPhone(savedProfile.phone ?? "")
-    setWhatsapp(savedProfile.whatsapp ?? "")
-    setEmail(savedProfile.email ?? "")
-    setBio(savedProfile.bio ?? "")
-    setPayoutMethod(savedProfile.payoutMethod ?? "M-Pesa")
-    setPayoutNumber(savedProfile.payoutNumber ?? "")
+    setPhone(savedProfile.phone ?? currentAccount?.phone ?? "")
+    setWhatsapp(savedProfile.whatsapp ?? currentAccount?.whatsapp ?? "")
+    setEmail(savedProfile.email ?? currentAccount?.email ?? "")
+    setBio(savedProfile.bio ?? currentAccount?.bio ?? "")
+    setPayoutMethod(savedProfile.payoutMethod ?? currentAccount?.payoutMethod ?? "M-Pesa")
+    setPayoutNumber(savedProfile.payoutNumber ?? currentAccount?.payoutNumber ?? "")
   }, [session]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!session) return null
@@ -61,6 +61,16 @@ export default function ProviderProfilePage() {
       whatsapp: whatsapp.trim() || undefined,
       email: email.trim() || undefined,
       bio: bio.trim() || undefined,
+      payoutMethod,
+      payoutNumber: payoutNumber.trim() || undefined,
+    })
+    // Met à jour aussi le compte officiel : c'est lui qui sert au routage
+    // des paiements clients vers le numéro / compte du prestataire.
+    updateAccount(session, {
+      phone: phone.trim() || currentAccount?.phone || "",
+      whatsapp: whatsapp.trim() || currentAccount?.whatsapp || "",
+      email: email.trim() || currentAccount?.email || "",
+      bio: bio.trim() || currentAccount?.bio || "",
       payoutMethod,
       payoutNumber: payoutNumber.trim() || undefined,
     })
@@ -181,11 +191,11 @@ export default function ProviderProfilePage() {
         <section className="grid content-start gap-6">
           <div className="rounded-[24px] border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
             <h3 className="flex items-center gap-2 font-semibold">
-              <Wallet className="h-4 w-4 text-zinc-400" /> Encaissement des acomptes
+              <Wallet className="h-4 w-4 text-zinc-400" /> Compte de réception des paiements
             </h3>
             <p className="mt-2 text-xs leading-relaxed text-zinc-500">
-              Les acomptes de 50% sont versés sur votre compte Mobile Money. Retrait sous 24h ouvrées,
-              commission Smart Booking : 10% par réservation confirmée.
+              Les paiements des clients (acompte de 50% et solde) sont versés directement sur le compte
+              ci-dessous. Il est communiqué au client au moment du règlement : gardez-le à jour.
             </p>
             <div className="mt-4 grid grid-cols-3 gap-2">
               {paymentMethods.map((method) => (
@@ -206,7 +216,7 @@ export default function ProviderProfilePage() {
               ))}
             </div>
             <div className="mt-4">
-              <label className="text-xs font-semibold text-zinc-500">Numéro de retrait</label>
+              <label className="text-xs font-semibold text-zinc-500">Numéro / compte de réception</label>
               <input
                 value={payoutNumber}
                 onChange={(e) => setPayoutNumber(e.target.value)}

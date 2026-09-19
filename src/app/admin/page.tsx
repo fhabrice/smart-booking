@@ -6,6 +6,7 @@ import { useProviderSpace, useMergedServices } from "@/lib/provider-context"
 import { useBookings } from "@/lib/booking-context"
 import { useMessages } from "@/lib/messages-context"
 import { formatPrice, formatPriceFC } from "@/lib/utils"
+import { PLATFORM_COMMISSION_RATE, splitPayment } from "@/lib/commission"
 import { Button } from "@/components/ui/button"
 import {
   Users,
@@ -58,10 +59,15 @@ export default function AdminDashboardPage() {
     (p) => p.status === "pending" || p.status === "processing"
   )
 
-  // Finances globales
+  // Finances globales — commission de service prélevée sur chaque paiement
+  // (calcul interne : les montants effectivement répartis sont enregistrés
+  // sur chaque réservation ; repli sur le taux en vigueur pour les anciennes).
   const confirmedBookings = bookings.filter((b) => b.status !== "cancelled")
   const globalVolume = confirmedBookings.reduce((sum, b) => sum + b.price, 0)
-  const platformCommission = Math.round(globalVolume * 0.1) // 10%
+  const platformCommission = confirmedBookings.reduce(
+    (sum, b) => sum + (b.platformFeeUSD ?? splitPayment(b.deposit).platformFeeUSD),
+    0
+  )
 
   const adminThreads = getAllAdminThreads()
 
@@ -159,7 +165,7 @@ export default function AdminDashboardPage() {
 
         <div className="rounded-[24px] border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm">
           <div className="flex items-center justify-between text-zinc-500 text-xs font-semibold">
-            <span>Commissions Smart Booking (10%)</span>
+            <span>Commissions plateforme ({Math.round(PLATFORM_COMMISSION_RATE * 100)}% / paiement)</span>
             <Sparkles className="h-4 w-4 text-purple-500" />
           </div>
           <div className="mt-2 text-2xl font-black text-purple-600 dark:text-purple-400">

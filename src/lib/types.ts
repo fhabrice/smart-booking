@@ -72,6 +72,12 @@ export interface Booking {
   location: string
   city: string
   createdAt: string
+  // --- Routage du paiement (instantané au moment de la réservation) ---
+  providerPayoutMethod?: string // canal du compte de réception du prestataire
+  providerPayoutNumber?: string // numéro / compte de réception du prestataire
+  // --- Commission interne : ne jamais afficher dans l'interface ---
+  platformFeeUSD?: number // part plateforme (4 %) prélevée sur le paiement
+  providerNetUSD?: number // part nette (96 %) revenant au prestataire
 }
 
 export interface TimeSlot {

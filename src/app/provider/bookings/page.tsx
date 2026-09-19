@@ -217,7 +217,10 @@ export default function ProviderBookingsPage() {
 
                     <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                       <span className="flex items-center gap-1.5 text-xs text-zinc-500">
-                        <Smartphone className="h-3.5 w-3.5" /> Acompte reçu via {booking.paymentMethod}
+                        <Smartphone className="h-3.5 w-3.5" />
+                        {booking.providerPayoutNumber
+                          ? `Acompte ${booking.paymentMethod} versé directement sur votre compte ${booking.providerPayoutMethod ?? "Mobile Money"} ${booking.providerPayoutNumber}`
+                          : `Acompte reçu via ${booking.paymentMethod} sur votre compte de paiement`}
                       </span>
                       <div className="flex flex-wrap gap-2">
                         {booking.status === "pending" && (

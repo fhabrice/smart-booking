@@ -3,6 +3,8 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useCart } from "@/lib/cart-context"
+import { useProviderSpace } from "@/lib/provider-context"
+import { resolvePaymentDestination } from "@/lib/commission"
 import { formatPrice, formatPriceFC } from "@/lib/utils"
 import { categoryName, paymentMethods } from "@/lib/data"
 import { Button } from "@/components/ui/button"
@@ -44,6 +46,14 @@ export default function CartPage() {
     generateQuote,
     checkoutCart,
   } = useCart()
+  const { accounts } = useProviderSpace()
+
+  // Compte de réception de chaque prestataire (fourni lors de son inscription) :
+  // l'acompte de chaque prestation est versé directement dessus.
+  const payoutFor = (providerName: string) =>
+    resolvePaymentDestination(
+      accounts.find((a) => a.name.toLowerCase() === providerName.toLowerCase())
+    )
 
   // Checkout modal
   const [showCheckout, setShowCheckout] = useState(false)
@@ -121,7 +131,7 @@ export default function CartPage() {
           </div>
           <h2 className="mt-5 text-2xl font-bold tracking-tight">Réservation confirmée ! 🎉</h2>
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-            Votre pack cérémonie de <strong>{itemCount || "plusieurs"} prestations</strong> a été envoyé aux prestataires. Vous recevrez une confirmation et les instructions de paiement de l&apos;acompte ({paymentMethod}).
+            Votre pack cérémonie de <strong>{itemCount || "plusieurs"} prestations</strong> a été envoyé aux prestataires. Vous recevrez une confirmation et le numéro de paiement de chaque prestataire pour verser directement les acomptes ({paymentMethod}).
           </p>
           <div className="mt-6 flex flex-col gap-2">
             <Link href="/bookings">
@@ -495,7 +505,7 @@ export default function CartPage() {
                     </span>
                   </div>
                   <p className="mt-1 text-zinc-600 dark:text-zinc-400">
-                    Chaque prestataire recevra sa notification. Le solde restant ({formatPrice(balanceUSD)}) sera réglé sur place le jour de la cérémonie.
+                    Chaque acompte est versé directement sur le numéro de paiement du prestataire concerné. Le solde restant ({formatPrice(balanceUSD)}) sera réglé sur place le jour de la cérémonie.
                   </p>
                 </div>
               </div>
@@ -674,14 +684,22 @@ export default function CartPage() {
                 </div>
 
                 <div className="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800">
-                  <div className="font-bold mb-2">Détail des acomptes à verser par prestation :</div>
+                  <div className="font-bold mb-2">Détail des acomptes à verser directement à chaque prestataire :</div>
                   <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                    {items.map((i) => (
-                      <div key={i.id} className="py-2 flex justify-between">
-                        <span>{i.service.name} ({i.service.provider.name})</span>
-                        <span className="font-bold">{formatPrice(Math.round(i.service.price * 0.5))}</span>
-                      </div>
-                    ))}
+                    {items.map((i) => {
+                      const dest = payoutFor(i.service.provider.name)
+                      return (
+                        <div key={i.id} className="py-2 flex justify-between gap-3">
+                          <div>
+                            <div>{i.service.name} ({i.service.provider.name})</div>
+                            <div className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">
+                              → {dest.method ?? "Mobile Money"} {dest.number ? `: ${dest.number}` : ": numéro communiqué après confirmation"}
+                            </div>
+                          </div>
+                          <span className="font-bold shrink-0">{formatPrice(Math.round(i.service.price * 0.5))}</span>
+                        </div>
+                      )
+                    })}
                   </div>
                   <div className="mt-3 border-t border-zinc-200 pt-2 flex justify-between font-bold text-sm text-emerald-600">
                     <span>Total acompte Mobile Money :</span>
@@ -690,10 +708,19 @@ export default function CartPage() {
                 </div>
 
                 <div className="rounded-xl bg-emerald-50 p-4 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300">
-                  <div className="font-bold mb-1">Comptes marchands de paiement :</div>
-                  <div>• Vodacom M-Pesa : <strong>*1122*00912#</strong> ou +243 821 110 021</div>
-                  <div>• Orange Money : <strong>#144*2*1#</strong> Code Marchand 45997</div>
-                  <div>• Airtel Money : <strong>*501#</strong> Code Partenaire SMARTBOOK</div>
+                  <div className="font-bold mb-1">Paiement direct aux prestataires :</div>
+                  {Array.from(new Set(items.map((i) => i.service.provider.name))).map((providerName) => {
+                    const dest = payoutFor(providerName)
+                    return (
+                      <div key={providerName}>
+                        • {providerName} :{" "}
+                        <strong>
+                          {dest.method ?? "Mobile Money"}
+                          {dest.number ? ` — ${dest.number}` : " — numéro communiqué après confirmation"}
+                        </strong>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             </div>

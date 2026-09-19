@@ -34,6 +34,8 @@ Basée en **RD Congo** 🇨🇩 — prix affichés en **USD + Franc Congolais (F
   - Numéro Téléphone & WhatsApp Pro (+243)
   - Ville (Kinshasa, Goma, Lubumbashi, Bukavu...) & Commune/Quartier
   - Catégorie d'activité principale
+  - **Numéro de paiement / compte de réception** (M-Pesa, Orange Money ou Airtel Money) : les paiements
+    des clients (acompte et solde) y sont versés **directement** à chaque réservation
   - Années d'expérience & Numéro RCCM / Id Nat (pour vérification)
   - Présentation & bio
 - **Statut d'adhésion** : nouveau compte en attente de validation administrative (visible côté admin), avec accès immédiat à son tableau de bord pour préparer ses services et affiches.
@@ -77,7 +79,7 @@ Espace d'administration centralisé pour superviser la plateforme Smart Booking 
 affiché à l'écran** — le code secret vient de la variable d'environnement `ADMIN_ACCESS_CODE`
 (valeur de secours : `admin243`) et n'est jamais livré au navigateur :
 - **Tableau de bord Admin (`/admin`)** :
-  - KPIs plateforme (total prestataires, services en attente, volume financier global, commissions 10%)
+  - KPIs plateforme (total prestataires, services en attente, volume financier global, commissions de service)
   - Files d'attente prioritaires (nouveaux prestataires à valider, nouvelles publications à modérer)
   - Derniers messages échangés
 - **Gestion des prestataires (`/admin/providers`)** :
@@ -157,7 +159,8 @@ Le schéma PostgreSQL complet de la plateforme se trouve à la racine du dépôt
 | `services` | Prestations publiées + statut de modération admin (`pending` / `approved` / `rejected`) |
 | `services_public` | **Vue** : vitrine client (approuvé, ni supprimé, ni en pause, prestataire non suspendu) |
 | `ceremony_events` | Cérémonies créées par les clients (mariage, dot, conférence…) |
-| `bookings` | Réservations, acomptes et opérateur Mobile Money |
+| `bookings` | Réservations, acomptes, opérateur Mobile Money et routage direct du paiement vers le compte du prestataire (répartition interne commission/part prestataire) |
+| `platform_accounts` | Comptes de collecte internes de la plateforme — **accès réservé au rôle service, jamais affichés sur la plateforme** |
 | `cart_items` | Panier multi-prestations |
 | `quotes` | Devis pro-forma et factures d'acompte |
 | `messages` | Messagerie client ↔ prestataire ↔ admin |

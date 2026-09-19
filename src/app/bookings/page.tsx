@@ -214,8 +214,19 @@ export default function BookingsPage() {
                     </div>
 
                     <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-4">
-                      <div className="flex items-center gap-2 text-xs text-zinc-500">
-                        <Smartphone className="h-3.5 w-3.5" /> Payé via {booking.paymentMethod} • RÉF.{" "}
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-zinc-500">
+                        <Smartphone className="h-3.5 w-3.5 shrink-0" />
+                        {booking.providerPayoutNumber ? (
+                          <span>
+                            Acompte {booking.paymentMethod} à verser directement à {booking.providerName} :{" "}
+                            <span className="font-mono font-bold text-zinc-700 dark:text-zinc-300">
+                              {booking.providerPayoutMethod ?? booking.paymentMethod} {booking.providerPayoutNumber}
+                            </span>
+                          </span>
+                        ) : (
+                          <span>Payé via {booking.paymentMethod}</span>
+                        )}{" "}
+                        • RÉF.{" "}
                         <span className="font-mono font-bold text-zinc-700 dark:text-zinc-300">
                           {bookingReference(booking.id)}
                         </span>

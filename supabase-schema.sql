@@ -293,6 +293,43 @@ create table if not exists public.reviews (
 
 create index if not exists reviews_service_idx on public.reviews (service_id);
 
+-- 2.11 Répartition des paiements & comptes de collecte plateforme ############
+-- ⚠️ INTERNE — ne jamais exposer dans l'interface publique de la plateforme.
+--
+-- Règle : le paiement du client part DIRECTEMENT sur le numéro / compte que
+-- le prestataire a fourni à son inscription (providers.payout_method /
+-- providers.payout_number, instantané copié sur chaque réservation).
+-- Sur chaque paiement, la plateforme prélève une commission de service de 4 %
+-- (bookings.platform_fee) ; le solde (bookings.provider_net, 96 %) revient
+-- au prestataire.
+
+-- Colonnes de répartition sur les réservations (idempotent)
+alter table public.bookings add column if not exists provider_payout_method text;
+alter table public.bookings add column if not exists provider_payout_number text;
+alter table public.bookings add column if not exists commission_rate numeric(6,4) not null default 0.04;
+alter table public.bookings add column if not exists platform_fee    numeric(12,2) not null default 0;  -- 4 % du paiement
+alter table public.bookings add column if not exists provider_net    numeric(12,2) not null default 0;  -- 96 % du paiement
+
+-- Comptes de collecte des commissions de la plateforme (usage admin/finance
+-- uniquement — lecture réservée au rôle service, voir section RLS).
+create table if not exists public.platform_accounts (
+  id          text primary key default gen_random_uuid()::text,
+  label       text not null,                        -- ex. 'Airtel Money', 'SMICO'
+  channel     text not null,                        -- 'Mobile Money' | 'Banque'
+  account_ref text not null unique,                 -- numéro / n° de compte de collecte
+  currency    text not null default 'USD',
+  is_active   boolean not null default true,
+  created_at  timestamptz not null default now()
+);
+
+insert into public.platform_accounts (label, channel, account_ref)
+select v.label, v.channel, v.account_ref
+from (values
+  ('Airtel Money', 'Mobile Money', '+243976459970'),
+  ('SMICO',        'Banque',       'GM018008')
+) as v (label, channel, account_ref)
+where not exists (select 1 from public.platform_accounts);
+
 -- ============================================================================
 -- 3. TRIGGERS updated_at
 -- ============================================================================
@@ -335,6 +372,7 @@ alter table public.messages        enable row level security;
 alter table public.payout_requests enable row level security;
 alter table public.activity_log    enable row level security;
 alter table public.reviews         enable row level security;
+alter table public.platform_accounts enable row level security;
 
 -- Lecture publique : catalogue approuvé + avis
 drop policy if exists "services_public_read" on public.services;
@@ -408,6 +446,12 @@ create policy "service_role_write_activity" on public.activity_log
 
 drop policy if exists "service_role_write_reviews" on public.reviews;
 create policy "service_role_write_reviews" on public.reviews
+  for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
+
+-- Comptes de collecte plateforme : accès intégral réservé au rôle service
+-- (jamais lisibles par la clé anon du navigateur — non affichés sur la plateforme)
+drop policy if exists "service_role_only_platform_accounts" on public.platform_accounts;
+create policy "service_role_only_platform_accounts" on public.platform_accounts
   for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
 
 -- ============================================================================
