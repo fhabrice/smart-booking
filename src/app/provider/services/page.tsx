@@ -8,7 +8,6 @@ import { categories, cities, categoryName, services as catalogServices } from "@
 import { formatPrice, formatPriceFC, cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
-  Store,
   Plus,
   Pencil,
   Check,
@@ -18,9 +17,10 @@ import {
   Zap,
   Trash2,
   Eye,
-  TrendingUp,
-  Star,
-  ArrowLeft,
+  ShieldAlert,
+  ShieldCheck,
+  Clock,
+  AlertCircle,
 } from "lucide-react"
 
 const priceUnits = [
@@ -61,14 +61,13 @@ const availableImages = [
 ]
 
 export default function ProviderServicesPage() {
-  const { session, setOverride, addCustomService, removeCustomService } = useProviderSpace()
+  const { session, currentAccount, setOverride, addCustomService, removeCustomService } = useProviderSpace()
   const { bookings } = useBookings()
   const providerServices = useProviderServices(session ?? "")
 
   const [showForm, setShowForm] = useState(false)
   const [editingPrice, setEditingPrice] = useState<string | null>(null)
   const [priceValue, setPriceValue] = useState("")
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [created, setCreated] = useState<string | null>(null)
 
   // Formulaire nouvelle prestation
@@ -78,11 +77,9 @@ export default function ProviderServicesPage() {
   const [location, setLocation] = useState("")
   const [price, setPrice] = useState("")
   const [priceUnit, setPriceUnit] = useState("la prestation")
-  const [durationHours, setDurationHours] = useState(4)
   const [description, setDescription] = useState("")
   const [features, setFeatures] = useState("")
   const [image, setImage] = useState(availableImages[0])
-  const [instant, setInstant] = useState(true)
   const [formError, setFormError] = useState("")
 
   const myBookings = useMemo(
@@ -103,10 +100,10 @@ export default function ProviderServicesPage() {
     const identity =
       catalogServices.find((s) => s.provider.name === session)?.provider ?? {
         name: session,
-        avatar: "/images/avatar-1.jpg",
-        verified: true,
-        experience: "Prestataire vérifié Smart Booking",
-        rating: 4.9,
+        avatar: currentAccount?.avatar || "/images/avatar-1.jpg",
+        verified: currentAccount?.verified || false,
+        experience: currentAccount?.experience || "Prestataire vérifié Smart Booking",
+        rating: currentAccount?.rating || 4.9,
       }
 
     const service = addCustomService({
@@ -116,7 +113,7 @@ export default function ProviderServicesPage() {
       longDescription: description.trim(),
       price: Math.round(numPrice),
       priceUnit,
-      duration: durationHours * 60,
+      duration: 240,
       rating: 5,
       reviews: 0,
       image,
@@ -129,8 +126,9 @@ export default function ProviderServicesPage() {
         .map((f) => f.trim())
         .filter(Boolean)
         .slice(0, 6),
-      instant,
+      instant: true,
       custom: true,
+      adminApprovalStatus: "pending", // En attente de modération admin
     })
 
     setCreated(service.name)
@@ -141,7 +139,7 @@ export default function ProviderServicesPage() {
     setFeatures("")
     setLocation("")
     setFormError("")
-    setTimeout(() => setCreated(null), 4000)
+    setTimeout(() => setCreated(null), 5000)
   }
 
   const savePrice = (serviceId: string) => {
@@ -158,109 +156,140 @@ export default function ProviderServicesPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Mes prestations</h1>
           <p className="mt-1 text-sm text-zinc-500">
-            {providerServices.length} prestation{providerServices.length > 1 ? "s" : ""} •{" "}
-            {providerServices.filter((s) => !s.paused).length} en ligne •{" "}
-            {providerServices.filter((s) => s.paused).length} en pause
+            {providerServices.length} prestation{providerServices.length > 1 ? "s" : ""} gérée
+            {providerServices.length > 1 ? "s" : ""} • Les nouvelles publications sont soumises à validation admin
           </p>
         </div>
-        <Button
-          onClick={() => setShowForm(!showForm)}
-          className="gap-2 bg-gradient-to-r from-amber-500 to-red-500 hover:from-amber-600 hover:to-red-600"
-        >
-          {showForm ? (
-            <>
-              <X className="h-4 w-4" /> Annuler
-            </>
-          ) : (
-            <>
-              <Plus className="h-4 w-4" /> Ajouter une prestation
-            </>
-          )}
-        </Button>
+        <div className="flex gap-2">
+          <Link href="/admin/services">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs text-zinc-600 dark:text-zinc-300">
+              <ShieldCheck className="h-4 w-4 text-amber-600" /> Modération Admin
+            </Button>
+          </Link>
+          <Button
+            onClick={() => setShowForm(!showForm)}
+            size="sm"
+            className="gap-2 bg-gradient-to-r from-amber-500 to-red-500 hover:from-amber-600 hover:to-red-600"
+          >
+            <Plus className="h-4 w-4" /> Publier une prestation
+          </Button>
+        </div>
       </div>
 
+      {/* Bannière de confirmation de création avec mention validation admin */}
       {created && (
-        <div className="mt-4 flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
-          <Check className="h-4 w-4" /> « {created} » est en ligne ! Vos clients peuvent déjà la réserver.
+        <div className="mt-6 flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-xs dark:border-amber-900/50 dark:bg-amber-950/30 animate-in fade-in">
+          <Clock className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" />
+          <div>
+            <div className="font-bold text-amber-900 dark:text-amber-200">
+              Prestation &quot;{created}&quot; soumise avec succès !
+            </div>
+            <p className="mt-0.5 text-amber-800 dark:text-amber-300">
+              Elle est actuellement <strong>en attente d&apos;approbation par l&apos;administrateur</strong>. Une fois validée par nos équipes de modération, elle sera automatiquement publiée sur la vitrine publique pour tous les organisateurs d&apos;événements.
+            </p>
+          </div>
         </div>
       )}
 
-      {/* Formulaire d'ajout */}
+      {/* Formulaire nouvelle prestation */}
       {showForm && (
-        <div className="mt-6 rounded-[24px] border border-amber-200 bg-white p-6 dark:border-amber-500/30 dark:bg-zinc-900 sm:p-8">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-red-500 text-white">
-              <Plus className="h-4 w-4" />
+        <div className="mt-6 rounded-[28px] border border-amber-200 bg-white p-6 shadow-xl dark:border-amber-500/30 dark:bg-zinc-900">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-red-500 text-white">
+                <Plus className="h-4 w-4" />
+              </div>
+              <h2 className="font-bold">Créer & soumettre une prestation</h2>
             </div>
-            <h2 className="font-semibold">Nouvelle prestation</h2>
+            <button
+              onClick={() => setShowForm(false)}
+              className="rounded-full p-1 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
 
-          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="mt-4 rounded-xl bg-amber-50/60 p-3 text-xs text-amber-800 dark:bg-amber-950/20 dark:text-amber-300 flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>Processus d&apos;approbation : Votre prestation sera examinée par l&apos;admin sous 24h avant d&apos;apparaître dans le catalogue client.</span>
+          </div>
+
+          {formError && (
+            <div className="mt-4 rounded-xl bg-red-50 p-3 text-xs font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">
+              {formError}
+            </div>
+          )}
+
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <label className="text-xs font-semibold text-zinc-500">Nom de la prestation *</label>
+              <label className="text-xs font-semibold">Titre de la prestation *</label>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Ex : Salle climatisée 200 places — Gombe"
-                className="mt-1.5 h-11 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-medium placeholder:text-zinc-400 focus:border-amber-400 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900"
+                placeholder="Ex : Décoration florale complète table d'honneur & allée"
+                className="mt-1 h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-xs font-medium focus:border-amber-400 focus:outline-none dark:border-zinc-800 dark:bg-zinc-800"
               />
             </div>
+
             <div>
-              <label className="text-xs font-semibold text-zinc-500">Catégorie *</label>
+              <label className="text-xs font-semibold">Catégorie *</label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="mt-1.5 h-11 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-medium focus:border-amber-400 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:[&>option]:bg-zinc-900"
+                className="mt-1 h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-xs font-medium focus:border-amber-400 focus:outline-none dark:border-zinc-800 dark:bg-zinc-800"
               >
                 {categories
                   .filter((c) => c.id !== "all")
                   .map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.icon} {c.name}
+                      {c.name}
                     </option>
                   ))}
               </select>
             </div>
+
             <div>
-              <label className="text-xs font-semibold text-zinc-500">Ville *</label>
+              <label className="text-xs font-semibold">Ville *</label>
               <select
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                className="mt-1.5 h-11 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-medium focus:border-amber-400 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:[&>option]:bg-zinc-900"
+                className="mt-1 h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-xs font-medium focus:border-amber-400 focus:outline-none dark:border-zinc-800 dark:bg-zinc-800"
               >
                 {cities.map((c) => (
                   <option key={c.id} value={c.name}>
-                    {c.name}
+                    {c.name} ({c.province})
                   </option>
                 ))}
               </select>
             </div>
+
             <div>
-              <label className="text-xs font-semibold text-zinc-500">Commune / quartier *</label>
+              <label className="text-xs font-semibold">Commune / quartier *</label>
               <input
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                placeholder="Ex : Gombe · Av. du 24 novembre"
-                className="mt-1.5 h-11 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-medium placeholder:text-zinc-400 focus:border-amber-400 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900"
+                placeholder="Ex : Gombe, Av. de la Justice"
+                className="mt-1 h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-xs font-medium focus:border-amber-400 focus:outline-none dark:border-zinc-800 dark:bg-zinc-800"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+
+            <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-xs font-semibold text-zinc-500">Prix USD *</label>
+                <label className="text-xs font-semibold">Prix en USD *</label>
                 <input
+                  type="number"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
-                  inputMode="numeric"
-                  placeholder="150"
-                  className="mt-1.5 h-11 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-medium placeholder:text-zinc-400 focus:border-amber-400 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900"
+                  placeholder="250"
+                  className="mt-1 h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-xs font-medium focus:border-amber-400 focus:outline-none dark:border-zinc-800 dark:bg-zinc-800"
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-zinc-500">Unité</label>
+                <label className="text-xs font-semibold">Unité</label>
                 <select
                   value={priceUnit}
                   onChange={(e) => setPriceUnit(e.target.value)}
-                  className="mt-1.5 h-11 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-medium focus:border-amber-400 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:[&>option]:bg-zinc-900"
+                  className="mt-1 h-10 w-full rounded-xl border border-zinc-200 bg-white px-2 text-xs font-medium focus:border-amber-400 focus:outline-none dark:border-zinc-800 dark:bg-zinc-800"
                 >
                   {priceUnits.map((u) => (
                     <option key={u} value={u}>
@@ -270,92 +299,57 @@ export default function ProviderServicesPage() {
                 </select>
               </div>
             </div>
-            <div>
-              <label className="text-xs font-semibold text-zinc-500">Durée sur place</label>
-              <select
-                value={durationHours}
-                onChange={(e) => setDurationHours(Number(e.target.value))}
-                className="mt-1.5 h-11 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-medium focus:border-amber-400 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:[&>option]:bg-zinc-900"
-              >
-                {[1, 2, 3, 4, 5, 6, 8, 10, 12].map((h) => (
-                  <option key={h} value={h}>
-                    {h}h
-                  </option>
-                ))}
-              </select>
-            </div>
+
             <div className="sm:col-span-2">
-              <label className="text-xs font-semibold text-zinc-500">Description courte *</label>
-              <input
+              <label className="text-xs font-semibold">Description détaillée *</label>
+              <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Ex : Salle climatisée avec scène, parking gardé et groupe électrogène"
-                className="mt-1.5 h-11 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-medium placeholder:text-zinc-400 focus:border-amber-400 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900"
+                rows={3}
+                placeholder="Ce qui est inclus, matériel apporté, conditions d'installation…"
+                className="mt-1 w-full rounded-xl border border-zinc-200 bg-white p-3 text-xs font-medium focus:border-amber-400 focus:outline-none dark:border-zinc-800 dark:bg-zinc-800"
               />
             </div>
+
             <div className="sm:col-span-2">
-              <label className="text-xs font-semibold text-zinc-500">
-                Points forts (séparés par des virgules)
-              </label>
+              <label className="text-xs font-semibold">Points forts (séparés par des virgules)</label>
               <input
                 value={features}
                 onChange={(e) => setFeatures(e.target.value)}
-                placeholder="Ex : Climatisation, Parking gardé 40 voitures, Hôtesses incluses"
-                className="mt-1.5 h-11 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-medium placeholder:text-zinc-400 focus:border-amber-400 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900"
+                placeholder="Fleurs fraîches, Éclairage LED, Démontage inclus, Transport pris en charge"
+                className="mt-1 h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-xs font-medium focus:border-amber-400 focus:outline-none dark:border-zinc-800 dark:bg-zinc-800"
               />
             </div>
+
             <div className="sm:col-span-2">
-              <label className="text-xs font-semibold text-zinc-500">Photo de la prestation</label>
-              <div className="mt-2 grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8">
+              <label className="text-xs font-semibold">Photo illustrative</label>
+              <div className="mt-2 flex gap-2 overflow-x-auto pb-2 scrollbar-none">
                 {availableImages.map((img) => (
                   <button
                     key={img}
+                    type="button"
                     onClick={() => setImage(img)}
-                    className={cn(
-                      "relative aspect-square overflow-hidden rounded-xl border-2 transition-all",
-                      image === img
-                        ? "border-amber-500 ring-2 ring-amber-300"
-                        : "border-transparent opacity-70 hover:opacity-100"
-                    )}
+                    className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border-2 transition-all ${
+                      image === img ? "border-amber-500 scale-105" : "border-transparent opacity-60 hover:opacity-100"
+                    }`}
                   >
                     <img src={img} alt="" className="h-full w-full object-cover" />
-                    {image === img && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                        <Check className="h-5 w-5 text-white" />
-                      </div>
-                    )}
                   </button>
                 ))}
               </div>
             </div>
-            <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800 sm:col-span-2">
-              <input
-                type="checkbox"
-                checked={instant}
-                onChange={(e) => setInstant(e.target.checked)}
-                className="h-4 w-4 accent-amber-500"
-              />
-              <span className="text-sm">
-                <span className="font-semibold">Réservation instantanée ⚡</span>
-                <span className="block text-xs text-zinc-500">
-                  Sinon, chaque demande attendra votre confirmation (moins de 2h recommandé)
-                </span>
-              </span>
-            </label>
           </div>
 
-          {formError && (
-            <p className="mt-4 rounded-xl bg-red-50 px-4 py-2 text-sm font-medium text-red-600 dark:bg-red-950/30">
-              {formError}
-            </p>
-          )}
-
           <div className="mt-6 flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setShowForm(false)}>
+            <Button variant="ghost" size="sm" onClick={() => setShowForm(false)}>
               Annuler
             </Button>
-            <Button onClick={handleCreate} className="gap-2 bg-gradient-to-r from-amber-500 to-red-500">
-              <Check className="h-4 w-4" /> Publier la prestation
+            <Button
+              size="sm"
+              onClick={handleCreate}
+              className="bg-gradient-to-r from-amber-500 to-red-500 hover:from-amber-600 hover:to-red-600 font-bold"
+            >
+              Soumettre à la modération admin
             </Button>
           </div>
         </div>
@@ -364,208 +358,165 @@ export default function ProviderServicesPage() {
       {/* Liste des prestations */}
       <div className="mt-6 grid gap-4">
         {providerServices.map((service) => {
-          const serviceBookings = myBookings.filter((b) => b.serviceId === service.id && b.status !== "cancelled")
-          const revenue = serviceBookings.reduce((sum, b) => sum + b.price, 0)
-          const isEditing = editingPrice === service.id
+          const bookingsForService = myBookings.filter((b) => b.serviceId === service.id)
+          const isApprovalPending = service.adminApprovalStatus === "pending"
+          const isRejected = service.adminApprovalStatus === "rejected"
+          const isApproved = service.adminApprovalStatus === "approved" || (!service.custom && !isRejected && !isApprovalPending)
+
           return (
             <div
               key={service.id}
               className={cn(
-                "overflow-hidden rounded-[24px] border bg-white transition-all dark:bg-zinc-900",
-                service.paused
-                  ? "border-zinc-100 dark:border-zinc-800/60"
-                  : "border-zinc-200 hover:shadow-lg dark:border-zinc-800"
+                "rounded-[24px] border bg-white p-5 transition-all dark:bg-zinc-900",
+                service.paused ? "border-zinc-200 opacity-75" : "border-zinc-200 hover:shadow-md dark:border-zinc-800"
               )}
             >
-              <div className="flex flex-col sm:flex-row">
-                <div className="relative h-40 w-full shrink-0 sm:h-auto sm:w-52">
+              <div className="flex flex-col gap-4 sm:flex-row">
+                <div className="relative h-32 w-full shrink-0 overflow-hidden rounded-2xl sm:h-28 sm:w-36">
                   <img src={service.image} alt={service.name} className="h-full w-full object-cover" />
-                  <div className="absolute left-3 top-3">
-                    <span
-                      className={cn(
-                        "rounded-full px-2.5 py-1 text-[10px] font-bold shadow-sm backdrop-blur",
-                        service.paused
-                          ? "bg-zinc-900/80 text-white"
-                          : "bg-emerald-500/90 text-white"
-                      )}
-                    >
-                      {service.paused ? "⏸ En pause" : "● En ligne"}
-                    </span>
-                  </div>
                 </div>
 
-                <div className="flex-1 p-5">
+                <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                        {/* BADGES STATUT APPROBATION ADMIN */}
+                        {isApprovalPending ? (
+                          <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-bold text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                            <Clock className="h-3 w-3" /> En attente approbation admin
+                          </span>
+                        ) : isRejected ? (
+                          <span className="flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-[11px] font-bold text-red-800 dark:bg-red-950/60 dark:text-red-300">
+                            <ShieldAlert className="h-3 w-3" /> Rejeté par l&apos;admin
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                            <ShieldCheck className="h-3 w-3" /> Approuvé & En ligne
+                          </span>
+                        )}
+
+                        <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
                           {categoryName(service.category)}
                         </span>
-                        {service.instant && (
-                          <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold shadow-sm dark:bg-zinc-800">
-                            ⚡ Instantané
-                          </span>
-                        )}
-                        {service.custom && (
-                          <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
-                            Créée par vous
+
+                        {service.paused && (
+                          <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-[10px] font-bold text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200">
+                            En pause
                           </span>
                         )}
                       </div>
-                      <h3 className="mt-1.5 font-semibold leading-tight">{service.name}</h3>
-                      <p className="mt-1 line-clamp-1 text-sm text-zinc-500">{service.description}</p>
-                      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
-                        <span className="flex items-center gap-1">
-                          <Star className="h-3 w-3 fill-amber-400 text-amber-400" /> {service.rating.toFixed(1)}
-                        </span>
-                        <span>
-                          {service.city} · {service.location}
-                        </span>
-                      </div>
+
+                      <h3 className="mt-1.5 truncate text-base font-bold">{service.name}</h3>
+                      <p className="line-clamp-2 mt-0.5 text-xs text-zinc-500">{service.description}</p>
                     </div>
 
                     <div className="text-right">
-                      {isEditing ? (
-                        <div className="flex items-center gap-2">
+                      {editingPrice === service.id ? (
+                        <div className="flex items-center gap-1">
                           <input
-                            autoFocus
-                            value={priceValue}
+                            type="number"
+                            defaultValue={service.price}
                             onChange={(e) => setPriceValue(e.target.value)}
-                            inputMode="numeric"
-                            className="h-9 w-24 rounded-full border border-amber-400 bg-white px-3 text-sm font-bold focus:outline-none dark:bg-zinc-900"
+                            className="h-8 w-20 rounded-lg border border-amber-400 px-2 text-sm font-bold focus:outline-none"
+                            autoFocus
                           />
-                          <Button size="sm" className="h-9 gap-1 text-xs" onClick={() => savePrice(service.id)}>
-                            <Check className="h-3 w-3" />
+                          <Button size="sm" className="h-8 px-2" onClick={() => savePrice(service.id)}>
+                            <Check className="h-3.5 w-3.5" />
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-9 text-xs"
-                            onClick={() => setEditingPrice(null)}
-                          >
-                            <X className="h-3 w-3" />
+                          <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => setEditingPrice(null)}>
+                            <X className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       ) : (
-                        <button
-                          onClick={() => {
-                            setEditingPrice(service.id)
-                            setPriceValue(String(service.price))
-                          }}
-                          className="group flex items-center gap-1.5 rounded-2xl px-2 py-1 transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                        >
+                        <div className="group/price flex items-baseline justify-end gap-1">
                           <span className="text-lg font-bold">{formatPrice(service.price)}</span>
-                          <Pencil className="h-3.5 w-3.5 text-zinc-300 group-hover:text-amber-500" />
-                        </button>
+                          <span className="text-xs text-zinc-500">{service.priceUnit}</span>
+                          <button
+                            onClick={() => {
+                              setEditingPrice(service.id)
+                              setPriceValue(String(service.price))
+                            }}
+                            className="ml-1 text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+                            title="Modifier le prix"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                        </div>
                       )}
                       <div className="text-[11px] font-medium text-amber-700 dark:text-amber-400">
-                        ≈ {formatPriceFC(service.price)} · {service.priceUnit}
+                        ≈ {formatPriceFC(service.price)}
                       </div>
                     </div>
                   </div>
 
-                  {/* Stats */}
-                  <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl bg-zinc-50 px-4 py-2.5 text-xs dark:bg-zinc-800/50">
-                    <span className="flex items-center gap-1.5 font-medium">
-                      <TrendingUp className="h-3.5 w-3.5 text-emerald-500" /> {formatPrice(revenue)} générés
-                    </span>
-                    <span className="text-zinc-400">•</span>
-                    <span className="text-zinc-500">
-                      {serviceBookings.length} réservation{serviceBookings.length > 1 ? "s" : ""}
-                    </span>
-                  </div>
+                  {/* Motif si rejeté */}
+                  {isRejected && service.adminFeedback && (
+                    <div className="mt-2 rounded-xl bg-red-50 p-2.5 text-xs text-red-800 dark:bg-red-950/40 dark:text-red-300">
+                      <strong>Motif du refus admin :</strong> {service.adminFeedback}
+                    </div>
+                  )}
 
-                  {/* Actions */}
-                  <div className="mt-4 flex flex-wrap items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant={service.paused ? "default" : "outline"}
-                      className={cn("h-9 gap-1.5 text-xs", !service.paused && "text-amber-700 dark:text-amber-300")}
-                      onClick={() => setOverride(service.id, { paused: !service.paused })}
-                    >
-                      {service.paused ? (
-                        <>
-                          <Play className="h-3.5 w-3.5" /> Remettre en ligne
-                        </>
-                      ) : (
-                        <>
-                          <Pause className="h-3.5 w-3.5" /> Mettre en pause
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-9 gap-1.5 text-xs"
-                      onClick={() => setOverride(service.id, { instant: !service.instant })}
-                    >
-                      <Zap
-                        className={cn(
-                          "h-3.5 w-3.5",
-                          service.instant ? "text-amber-500" : "text-zinc-400"
-                        )}
-                      />
-                      {service.instant ? "Instantané activé" : "Instantané désactivé"}
-                    </Button>
-                    <Link href={`/services/${service.id}`}>
-                      <Button size="sm" variant="ghost" className="h-9 gap-1.5 text-xs">
-                        <Eye className="h-3.5 w-3.5" /> Voir la vitrine
-                      </Button>
-                    </Link>
-                    {service.custom && (
+                  {/* Actions & contrôles */}
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-500">
+                      <span>{service.city} ({service.location})</span>
+                      <span>•</span>
+                      <span>{bookingsForService.length} réservation{bookingsForService.length > 1 ? "s" : ""}</span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
                       <Button
                         size="sm"
-                        variant="ghost"
-                        className="h-9 gap-1.5 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
-                        onClick={() => {
-                          if (confirmDelete === service.id) {
-                            removeCustomService(service.id)
-                            setConfirmDelete(null)
-                          } else {
-                            setConfirmDelete(service.id)
-                            setTimeout(() => setConfirmDelete(null), 3000)
-                          }
-                        }}
+                        variant="outline"
+                        className="h-8 gap-1 text-xs"
+                        onClick={() => setOverride(service.id, { paused: !service.paused })}
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        {confirmDelete === service.id ? "Confirmer la suppression ?" : "Supprimer"}
+                        {service.paused ? (
+                          <>
+                            <Play className="h-3 w-3 text-emerald-600" /> Reprendre
+                          </>
+                        ) : (
+                          <>
+                            <Pause className="h-3 w-3 text-zinc-500" /> Mettre en pause
+                          </>
+                        )}
                       </Button>
-                    )}
+
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 gap-1 text-xs"
+                        onClick={() => setOverride(service.id, { instant: !service.instant })}
+                      >
+                        <Zap className={cn("h-3 w-3", service.instant ? "text-amber-500" : "text-zinc-400")} />
+                        {service.instant ? "Instantanée ON" : "Instantanée OFF"}
+                      </Button>
+
+                      {isApproved && (
+                        <Link href={`/services/${service.id}`}>
+                          <Button size="sm" variant="ghost" className="h-8 gap-1 text-xs">
+                            <Eye className="h-3 w-3" /> Voir sur vitrine
+                          </Button>
+                        </Link>
+                      )}
+
+                      {service.custom && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 gap-1 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                          onClick={() => removeCustomService(service.id)}
+                        >
+                          <Trash2 className="h-3 w-3" /> Supprimer
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  {service.paused && (
-                    <p className="mt-3 text-xs text-zinc-500">
-                      ⏸ En pause : la prestation est masquée du catalogue client, personne ne peut la réserver.
-                    </p>
-                  )}
                 </div>
               </div>
             </div>
           )
         })}
-
-        {providerServices.length === 0 && (
-          <div className="rounded-[32px] border border-dashed border-zinc-300 bg-white p-12 text-center dark:border-zinc-700 dark:bg-zinc-900">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
-              <Store className="h-7 w-7 text-zinc-400" />
-            </div>
-            <h3 className="mt-5 font-semibold">Aucune prestation</h3>
-            <p className="mx-auto mt-1 max-w-sm text-sm text-zinc-500">
-              Créez votre première prestation pour apparaître dans le catalogue Smart Booking.
-            </p>
-            <Button onClick={() => setShowForm(true)} className="mt-5 gap-2 bg-gradient-to-r from-amber-500 to-red-500">
-              <Plus className="h-4 w-4" /> Ajouter une prestation
-            </Button>
-          </div>
-        )}
-      </div>
-
-      <div className="mt-8">
-        <Link
-          href="/provider/dashboard"
-          className="inline-flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
-        >
-          <ArrowLeft className="h-4 w-4" /> Retour au tableau de bord
-        </Link>
       </div>
     </div>
   )

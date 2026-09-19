@@ -1,14 +1,23 @@
 "use client"
 
 import Link from "next/link"
-import { Star, Clock, MapPin, Heart, Check, Users } from "lucide-react"
+import { Star, Clock, MapPin, Heart, Check, Plus } from "lucide-react"
 import { Service } from "@/lib/types"
 import { formatPrice, formatPriceFC, cn } from "@/lib/utils"
 import { categoryName } from "@/lib/data"
 import { useState } from "react"
+import { useCart } from "@/lib/cart-context"
 
 export function ServiceCard({ service, featured }: { service: Service; featured?: boolean }) {
   const [liked, setLiked] = useState(false)
+  const { isInCart, addItem } = useCart()
+  const inCart = isInCart(service.id)
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    addItem(service)
+  }
 
   return (
     <Link
@@ -42,6 +51,7 @@ export function ServiceCard({ service, featured }: { service: Service; featured?
         <button
           onClick={(e) => {
             e.preventDefault()
+            e.stopPropagation()
             setLiked(!liked)
           }}
           className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow-sm backdrop-blur transition-all hover:bg-white dark:bg-zinc-800/90 dark:hover:bg-zinc-800"
@@ -63,15 +73,38 @@ export function ServiceCard({ service, featured }: { service: Service; featured?
       </div>
 
       <div className={cn("flex flex-1 flex-col p-4", featured ? "md:w-[48%] md:p-6" : "")}>
-        <div className="mb-2 flex items-center gap-2">
-          <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
-            {categoryName(service.category)}
-          </span>
-          {service.provider.verified && (
-            <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-              <Check className="h-3 w-3 rounded-full bg-emerald-500 p-0.5 text-white" /> Vérifié
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+              {categoryName(service.category)}
             </span>
-          )}
+            {service.provider.verified && (
+              <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                <Check className="h-3 w-3 rounded-full bg-emerald-500 p-0.5 text-white" /> Vérifié
+              </span>
+            )}
+          </div>
+
+          <button
+            onClick={handleAddToCart}
+            className={cn(
+              "flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-all",
+              inCart
+                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                : "bg-zinc-100 text-zinc-700 hover:bg-amber-100 hover:text-amber-800 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-amber-900/40 dark:hover:text-amber-300"
+            )}
+            title={inCart ? "Déjà dans votre devis" : "Ajouter à votre panier / devis"}
+          >
+            {inCart ? (
+              <>
+                <Check className="h-3 w-3 text-emerald-600" /> Au panier
+              </>
+            ) : (
+              <>
+                <Plus className="h-3 w-3" /> Devis
+              </>
+            )}
+          </button>
         </div>
 
         <h3 className="line-clamp-2 text-[15px] font-semibold leading-tight tracking-tight md:text-base">{service.name}</h3>

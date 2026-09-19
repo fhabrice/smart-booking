@@ -2,15 +2,17 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { CalendarDays, Sparkles, Menu, X, Plus, Ticket, Briefcase } from "lucide-react"
+import { CalendarDays, Sparkles, Menu, X, Plus, Ticket, Briefcase, ShoppingBag, ShieldCheck } from "lucide-react"
 import { useState } from "react"
 import { useBookings } from "@/lib/booking-context"
+import { useCart } from "@/lib/cart-context"
 import { Button } from "./ui/button"
 import { cn } from "@/lib/utils"
 
 export function Header() {
   const pathname = usePathname()
   const { bookings } = useBookings()
+  const { itemCount } = useCart()
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const activeBookings = bookings.filter((b) => b.status !== "cancelled").length
@@ -23,9 +25,11 @@ export function Header() {
     matchPrefix?: boolean
   }> = [
     { href: "/", label: "Découvrir", icon: Sparkles },
+    { href: "/cart", label: "Panier & Devis", icon: ShoppingBag, badge: itemCount || undefined },
     { href: "/events/new", label: "Créer une cérémonie", icon: Plus },
     { href: "/bookings", label: "Mes réservations", icon: Ticket, badge: activeBookings || undefined },
     { href: "/provider", label: "Espace prestataires", icon: Briefcase, matchPrefix: true },
+    { href: "/admin", label: "Admin", icon: ShieldCheck, matchPrefix: true },
   ]
 
   const isActive = (item: (typeof nav)[number]) =>
@@ -34,7 +38,7 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-zinc-100 bg-white/80 backdrop-blur-xl dark:border-zinc-800 dark:bg-zinc-950/80">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-8">
+        <div className="flex items-center gap-6 lg:gap-8">
           <Link href="/" className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 via-red-500 to-blue-600 text-white shadow-md">
               <Sparkles className="h-4 w-4" />
@@ -55,7 +59,7 @@ export function Header() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "relative flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors",
+                  "relative flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-medium transition-colors",
                   isActive(item)
                     ? "bg-zinc-900 text-white dark:bg-white dark:text-black"
                     : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
@@ -74,12 +78,17 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="hidden items-center gap-2 rounded-full border border-zinc-200 px-3 py-1.5 dark:border-zinc-800 lg:flex">
-            <div className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-            <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-              {activeBookings} réservation{activeBookings !== 1 ? "s" : ""} active{activeBookings !== 1 ? "s" : ""}
-            </span>
-          </div>
+          {/* Bouton Panier Rapide */}
+          <Link href="/cart" className="relative flex h-9 items-center gap-1.5 rounded-full border border-zinc-200 px-3 text-xs font-semibold hover:border-amber-400 dark:border-zinc-800 dark:hover:border-amber-500">
+            <ShoppingBag className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <span className="hidden sm:inline">Devis</span>
+            {itemCount > 0 && (
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-gradient-to-r from-amber-500 to-red-500 px-1 text-[11px] font-bold text-white">
+                {itemCount}
+              </span>
+            )}
+          </Link>
+
           <Link href="/events/new" className="hidden sm:block">
             <Button size="sm" className="gap-2 bg-gradient-to-r from-amber-500 to-red-500 hover:from-amber-600 hover:to-red-600">
               <CalendarDays className="h-4 w-4" />

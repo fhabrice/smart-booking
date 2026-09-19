@@ -32,6 +32,7 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     try {
       const savedBookings = localStorage.getItem(BOOKINGS_KEY)
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (savedBookings) setBookings(JSON.parse(savedBookings))
       const savedEvents = localStorage.getItem(EVENTS_KEY)
       if (savedEvents) setEvents(JSON.parse(savedEvents))

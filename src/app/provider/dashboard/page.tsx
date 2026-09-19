@@ -148,6 +148,61 @@ export default function ProviderDashboardPage() {
         </Link>
       </div>
 
+      {/* Raccourcis Outils Prestataire : Affiches, Rapports, Messages, Support */}
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Link
+          href="/provider/flyers"
+          className="group rounded-2xl border border-zinc-200 bg-white p-4 transition-all hover:border-amber-400 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
+        >
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-red-500 text-white">
+            <Sparkles className="h-4 w-4" />
+          </div>
+          <div className="mt-3 text-xs font-bold text-zinc-900 dark:text-white group-hover:text-amber-600">
+            Créateur d&apos;affiches
+          </div>
+          <div className="mt-0.5 text-[10px] text-zinc-500">Générer flyers PNG & WhatsApp</div>
+        </Link>
+
+        <Link
+          href="/provider/reports"
+          className="group rounded-2xl border border-zinc-200 bg-white p-4 transition-all hover:border-amber-400 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
+        >
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300">
+            <TrendingUp className="h-4 w-4" />
+          </div>
+          <div className="mt-3 text-xs font-bold text-zinc-900 dark:text-white group-hover:text-purple-600">
+            Rapports & Bilan
+          </div>
+          <div className="mt-0.5 text-[10px] text-zinc-500">Chiffres, Mobile Money, export</div>
+        </Link>
+
+        <Link
+          href="/provider/messages"
+          className="group rounded-2xl border border-zinc-200 bg-white p-4 transition-all hover:border-amber-400 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
+        >
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+            <Phone className="h-4 w-4" />
+          </div>
+          <div className="mt-3 text-xs font-bold text-zinc-900 dark:text-white group-hover:text-blue-600">
+            Messages clients
+          </div>
+          <div className="mt-0.5 text-[10px] text-zinc-500">Questions & discussions</div>
+        </Link>
+
+        <Link
+          href="/provider/support"
+          className="group rounded-2xl border border-zinc-200 bg-white p-4 transition-all hover:border-amber-400 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
+        >
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+            <Store className="h-4 w-4" />
+          </div>
+          <div className="mt-3 text-xs font-bold text-zinc-900 dark:text-white group-hover:text-emerald-600">
+            Assistance Admin
+          </div>
+          <div className="mt-0.5 text-[10px] text-zinc-500">Validation et support direct</div>
+        </Link>
+      </div>
+
       {/* Empty state */}
       {myBookings.length === 0 ? (
         <div className="mt-8 rounded-[32px] border border-dashed border-zinc-300 bg-white p-12 text-center dark:border-zinc-700 dark:bg-zinc-900">
