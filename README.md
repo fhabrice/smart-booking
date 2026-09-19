@@ -188,6 +188,23 @@ SUPABASE_SERVICE_ROLE_KEY=        # optionnelle, côté serveur uniquement
 ADMIN_ACCESS_CODE=votre-code-secret-admin
 ```
 
+### Mise à jour d'un projet existant
+
+Le script étant idempotent, une nouvelle version se déploie en le **rejouant intégralement** :
+**SQL Editor → New query** → coller `supabase-schema.sql` à jour → **Run**. Les tables, types,
+politiques et données existantes sont conservés ; seuls les objets manquants sont créés.
+
+Exemple — version « paiement direct + commission interne » :
+
+- colonnes ajoutées à `bookings` : `provider_payout_method`, `provider_payout_number`,
+  `commission_rate` (`0.04`), `platform_fee`, `provider_net` ;
+- table `platform_accounts` créée et initialisée (2 comptes de collecte, RLS rôle service) ;
+- réservations antérieures reprises automatiquement : compte de réception recopié depuis le
+  profil prestataire et répartition 4 % / 96 % calculée sur l'acompte encaissé (les lignes déjà
+  renseignées ne sont jamais écrasées).
+
+Les requêtes de contrôle à lancer après le rejeu figurent en fin de script (section 6).
+
 ### Intégration dans le code
 
 | Fichier | Rôle |

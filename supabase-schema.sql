@@ -310,6 +310,27 @@ alter table public.bookings add column if not exists commission_rate numeric(6,4
 alter table public.bookings add column if not exists platform_fee    numeric(12,2) not null default 0;  -- 4 % du paiement
 alter table public.bookings add column if not exists provider_net    numeric(12,2) not null default 0;  -- 96 % du paiement
 
+-- Reprise des réservations enregistrées AVANT cette version (idempotent :
+-- seules les lignes encore vides sont touchées, rien n'est écrasé au rejeu).
+--   a) compte de réception : recopié depuis le profil du prestataire
+update public.bookings b
+   set provider_payout_method = p.payout_method::text,
+       provider_payout_number = p.payout_number
+  from public.providers p
+ where p.id = b.provider_id
+   and b.provider_payout_number is null
+   and p.payout_number is not null;
+
+--   b) répartition sur l'acompte déjà encaissé, même règle que
+--      src/lib/commission.ts : commission = round(acompte × taux) au dollar
+--      près, net = acompte − commission.
+update public.bookings
+   set platform_fee = round(deposit * commission_rate),
+       provider_net = deposit - round(deposit * commission_rate)
+ where deposit > 0
+   and platform_fee = 0
+   and provider_net = 0;
+
 -- Comptes de collecte des commissions de la plateforme (usage admin/finance
 -- uniquement — lecture réservée au rôle service, voir section RLS).
 create table if not exists public.platform_accounts (
@@ -533,3 +554,15 @@ create policy "ref_read" on public.event_types for select using (true);
 -- ============================================================================
 -- select table_name from information_schema.tables
 -- where table_schema = 'public' order by table_name;
+--
+-- Après un rejeu (répartition des paiements + comptes de collecte) :
+-- select column_name, data_type, is_nullable, column_default
+--   from information_schema.columns
+--  where table_schema = 'public' and table_name = 'bookings'
+--    and column_name in ('provider_payout_method', 'provider_payout_number',
+--                        'commission_rate', 'platform_fee', 'provider_net')
+--  order by column_name;                       -- attendu : 5 lignes
+-- select label, channel, currency, is_active
+--   from public.platform_accounts;             -- attendu : 2 comptes actifs
+-- select count(*) filter (where deposit > 0 and platform_fee = 0 and provider_net = 0)
+--   as a_reprendre from public.bookings;       -- attendu : 0

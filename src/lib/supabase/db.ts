@@ -245,8 +245,10 @@ export async function insertBooking(
       // Routage direct du paiement vers le compte du prestataire + répartition interne
       provider_payout_method: booking.providerPayoutMethod ?? null,
       provider_payout_number: booking.providerPayoutNumber ?? null,
-      platform_fee: booking.platformFeeUSD ?? null,
-      provider_net: booking.providerNetUSD ?? null,
+      // Colonnes NOT NULL DEFAULT 0 : on omet la clé (undefined) plutôt que
+      // d'envoyer null, afin que la valeur par défaut de la base s'applique.
+      platform_fee: booking.platformFeeUSD ?? undefined,
+      provider_net: booking.providerNetUSD ?? undefined,
     })
     .select("id")
     .single()
