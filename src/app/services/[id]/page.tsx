@@ -5,7 +5,7 @@ import { categoryName } from "@/lib/data"
 import { useMergedServices, useProviderProfile } from "@/lib/provider-context"
 import { useCart } from "@/lib/cart-context"
 import { useMessages } from "@/lib/messages-context"
-import { formatPrice, formatPriceFC } from "@/lib/utils"
+import { formatPrice, formatPriceFC, isoDay, minBookableDate } from "@/lib/utils"
 import {
   Star,
   MapPin,
@@ -67,6 +67,8 @@ function ServicePageContent() {
   const { addItem, isInCart } = useCart()
   const inCart = service ? isInCart(service.id) : false
   const [addedNotice, setAddedNotice] = useState(false)
+  // Date choisie dans le widget de réservation, transmise au panier / devis
+  const [chosenDate, setChosenDate] = useState<string>(() => isoDay(minBookableDate()))
 
   // Messagerie Client <-> Prestataire
   const { sendMessage, getClientProviderThread } = useMessages()
@@ -90,7 +92,7 @@ function ServicePageContent() {
   const threadMessages = getClientProviderThread(service.provider.name, chatPhone || "visiteur")
 
   const handleAddToCart = () => {
-    addItem(service)
+    addItem(service, chosenDate)
     setAddedNotice(true)
     setTimeout(() => setAddedNotice(false), 3000)
   }
@@ -403,7 +405,7 @@ function ServicePageContent() {
 
           {/* Right - Booking widget */}
           <div>
-            <BookingWidget service={service} defaultEventId={eventId} />
+            <BookingWidget service={service} defaultEventId={eventId} onDateChange={setChosenDate} />
 
             <div className="mt-4 rounded-[20px] border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
               <div className="flex items-center gap-3">

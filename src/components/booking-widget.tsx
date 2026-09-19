@@ -2,20 +2,40 @@
 
 import { useState } from "react"
 import { Service } from "@/lib/types"
-import { formatPrice, formatPriceFC, generateTimeSlots, bookingReference } from "@/lib/utils"
+import {
+  BOOKING_HORIZON_MONTHS,
+  bookingReference,
+  formatPrice,
+  formatPriceFC,
+  generateTimeSlots,
+  isoDay,
+  maxBookableDate,
+  minBookableDate,
+} from "@/lib/utils"
 import { Button } from "./ui/button"
+import { MonthCalendar } from "./month-calendar"
 import { Calendar, Clock, Check, Shield, Smartphone, PartyPopper, User, Phone } from "lucide-react"
-import { format, addDays, isSameDay } from "date-fns"
+import { format, startOfMonth } from "date-fns"
 import { fr } from "date-fns/locale"
 import { useBookings } from "@/lib/booking-context"
 import { paymentMethods } from "@/lib/data"
 import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 
-export function BookingWidget({ service, defaultEventId }: { service: Service; defaultEventId?: string }) {
+export function BookingWidget({
+  service,
+  defaultEventId,
+  onDateChange,
+}: {
+  service: Service
+  defaultEventId?: string
+  /** Notifie la page parente de la date choisie (transmise au panier / devis) */
+  onDateChange?: (isoDate: string) => void
+}) {
   const router = useRouter()
   const { addBooking, isSlotBooked, events } = useBookings()
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
+  const [selectedDate, setSelectedDate] = useState<Date>(() => minBookableDate())
+  const [viewMonth, setViewMonth] = useState<Date>(() => startOfMonth(minBookableDate()))
   const [selectedTime, setSelectedTime] = useState<string>("")
   const [eventId, setEventId] = useState<string>(defaultEventId ?? "")
   const [name, setName] = useState("")
@@ -24,9 +44,10 @@ export function BookingWidget({ service, defaultEventId }: { service: Service; d
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState<{ id: string; status: string } | null>(null)
 
-  const dates = Array.from({ length: 14 }, (_, i) => addDays(new Date(), i))
   const timeSlots = generateTimeSlots()
-  const dateStr = format(selectedDate, "yyyy-MM-dd")
+  const dateStr = isoDay(selectedDate)
+  const firstBookableDay = minBookableDate()
+  const lastBookableDay = maxBookableDate()
 
   const deposit = Math.round(service.price * 0.5)
 
@@ -131,38 +152,28 @@ export function BookingWidget({ service, defaultEventId }: { service: Service; d
           </div>
         </div>
 
-        {/* Date picker */}
+        {/* Date picker — calendrier navigable sur 24 mois */}
         <div className="mt-6">
           <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold">
             <Calendar className="h-4 w-4" /> Date de la cérémonie
           </h4>
-          <div className="grid grid-cols-7 gap-1.5">
-            {dates.map((date, i) => {
-              const isSelected = isSameDay(date, selectedDate)
-              const isToday = i === 0
-              return (
-                <button
-                  key={i}
-                  onClick={() => setSelectedDate(date)}
-                  className={`flex flex-col items-center rounded-2xl border p-2 text-xs transition-all ${
-                    isSelected
-                      ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-black"
-                      : "border-zinc-100 bg-zinc-50 hover:border-zinc-200 hover:bg-white dark:border-zinc-800 dark:bg-zinc-800/50 dark:hover:bg-zinc-800"
-                  }`}
-                >
-                  <span className={`text-[10px] uppercase ${isSelected ? "text-white/70 dark:text-black/60" : "text-zinc-500"}`}>
-                    {format(date, "EEE", { locale: fr })}
-                  </span>
-                  <span className="mt-1 text-sm font-bold">{format(date, "d")}</span>
-                  {isToday && (
-                    <span className={`mt-1 h-1 w-1 rounded-full ${isSelected ? "bg-white dark:bg-black" : "bg-amber-500"}`} />
-                  )}
-                </button>
-              )
-            })}
-          </div>
-          <p className="mt-3 text-center text-xs font-medium text-zinc-500">
-            {format(selectedDate, "EEEE d MMMM", { locale: fr })}
+          <MonthCalendar
+            viewMonth={viewMonth}
+            onViewMonthChange={setViewMonth}
+            selected={selectedDate}
+            onSelect={(date) => {
+              setSelectedDate(date)
+              onDateChange?.(isoDay(date))
+            }}
+            minDate={firstBookableDay}
+            maxDate={lastBookableDay}
+          />
+          <p className="mt-3 text-center text-xs font-medium capitalize text-zinc-500">
+            {format(selectedDate, "EEEE d MMMM yyyy", { locale: fr })}
+          </p>
+          <p className="mt-1 text-center text-[11px] text-zinc-400">
+            Réservation ouverte sur {BOOKING_HORIZON_MONTHS} mois, jusqu&apos;au{" "}
+            {format(lastBookableDay, "d MMMM yyyy", { locale: fr })}
           </p>
         </div>
 
