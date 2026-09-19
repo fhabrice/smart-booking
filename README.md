@@ -188,6 +188,19 @@ SUPABASE_SERVICE_ROLE_KEY=        # optionnelle, côté serveur uniquement
 ADMIN_ACCESS_CODE=votre-code-secret-admin
 ```
 
+### Mise à jour d'un projet existant
+
+Le moyen le plus simple : exécuter **`migration-paiement-direct.sql`** (SQL Editor → New query →
+coller le fichier → Run). Ce script autonome applique la version « paiement direct + commission
+interne » en une seule transaction atomique — colonnes de `bookings`, table interne
+`platform_accounts` (RLS rôle service, 2 comptes de collecte), reprise des réservations
+existantes (compte de réception recopié depuis le prestataire + répartition 4 % / 96 % sur
+l'acompte, jamais écrasée) — puis affiche lui-même une grille de contrôle (`✅ OK` attendu).
+
+Alternative : le script complet `supabase-schema.sql` étant idempotent, on peut aussi le
+**rejouer intégralement** — tables, types, politiques et données existantes sont conservés ;
+seuls les objets manquants sont créés. Requêtes de contrôle en fin de script (section 6).
+
 ### Intégration dans le code
 
 | Fichier | Rôle |
