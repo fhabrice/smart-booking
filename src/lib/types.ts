@@ -151,6 +151,8 @@ export interface ProviderAccount {
   avatar: string
   registeredAt: string
   adminNotes?: string
+  payoutMethod?: string // canal de retrait Mobile Money préféré
+  payoutNumber?: string // numéro Mobile Money de retrait
 }
 
 /** Élément du panier multi-prestations client */

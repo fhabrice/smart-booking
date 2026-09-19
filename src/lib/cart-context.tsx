@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from "
 import { CartItem, QuoteData, Service, Booking } from "./types"
 import { useBookings } from "./booking-context"
 import { format, addDays } from "date-fns"
+import { syncQuote } from "./supabase/sync"
 
 const CART_KEY = "sb-rdc-cart"
 
@@ -129,7 +130,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     notes?: string
   }): QuoteData => {
     const quoteNumber = `DEV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`
-    return {
+    const quote: QuoteData = {
       quoteNumber,
       date: format(new Date(), "yyyy-MM-dd"),
       validUntil: format(addDays(new Date(), 30), "yyyy-MM-dd"),
@@ -147,6 +148,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       balance: balanceUSD,
       notes: customer.notes,
     }
+    // Miroir Supabase : devis pro-forma enregistré (no-op si base non configurée)
+    syncQuote(quote)
+    return quote
   }
 
   const checkoutCart = (customer: {

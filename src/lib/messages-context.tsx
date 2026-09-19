@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react"
 import { ChatMessage } from "./types"
+import { syncMessage } from "./supabase/sync"
 
 const MESSAGES_KEY = "sb-rdc-messages"
 
@@ -130,6 +131,8 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
       read: false,
     }
     setMessages((prev) => [...prev, newMsg])
+    // Miroir Supabase (no-op si la base n'est pas configurée)
+    syncMessage(newMsg)
     return newMsg
   }
 

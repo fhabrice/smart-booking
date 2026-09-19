@@ -10,6 +10,14 @@ import {
   ServiceOverride,
 } from "./types"
 import { services as catalogServices } from "./data"
+import {
+  syncPayoutProcessed,
+  syncPayoutRequest,
+  syncProviderRegistration,
+  syncProviderStatus,
+  syncServiceApproval,
+  syncServiceCreation,
+} from "./supabase/sync"
 
 const SESSION_KEY = "sb-rdc-provider-session"
 const OVERRIDES_KEY = "sb-rdc-provider-overrides"
@@ -320,10 +328,14 @@ export function ProviderSpaceProvider({ children }: { children: React.ReactNode 
     }
     setAccounts((prev) => [newAccount, ...prev])
     setSession(newAccount.name)
+    // Miroir Supabase (no-op si la base n'est pas configurée)
+    syncProviderRegistration({ ...data, avatar: newAccount.avatar })
     return newAccount
   }
 
   const updateAccountStatus = (providerName: string, status: ProviderStatus, adminNotes?: string) => {
+    const target = accounts.find((a) => a.name.toLowerCase() === providerName.toLowerCase())
+    if (target) syncProviderStatus(target.id, status, adminNotes)
     setAccounts((prev) =>
       prev.map((a) =>
         a.name.toLowerCase() === providerName.toLowerCase()
@@ -363,6 +375,8 @@ export function ProviderSpaceProvider({ children }: { children: React.ReactNode 
       adminApprovalStatus: "pending",
     }
     setCustomServices((prev) => [newService, ...prev])
+    // Miroir Supabase : prestation en attente de validation admin
+    syncServiceCreation(newService)
     return newService
   }
 
@@ -380,6 +394,7 @@ export function ProviderSpaceProvider({ children }: { children: React.ReactNode 
   }
 
   const approveService = (serviceId: string) => {
+    syncServiceApproval(serviceId, "approved")
     setOverrides((prev) => ({
       ...prev,
       [serviceId]: { ...prev[serviceId], adminApprovalStatus: "approved", adminFeedback: undefined },
@@ -387,6 +402,7 @@ export function ProviderSpaceProvider({ children }: { children: React.ReactNode 
   }
 
   const rejectService = (serviceId: string, feedback: string) => {
+    syncServiceApproval(serviceId, "rejected", feedback)
     setOverrides((prev) => ({
       ...prev,
       [serviceId]: { ...prev[serviceId], adminApprovalStatus: "rejected", adminFeedback: feedback },
@@ -427,10 +443,13 @@ export function ProviderSpaceProvider({ children }: { children: React.ReactNode 
       notes: data.notes,
     }
     setPayoutRequests((prev) => [newPayout, ...prev])
+    // Miroir Supabase : demande de retrait Mobile Money
+    syncPayoutRequest(newPayout)
     return newPayout
   }
 
   const processPayout = (payoutId: string, transactionRef: string) => {
+    syncPayoutProcessed(payoutId, transactionRef)
     setPayoutRequests((prev) =>
       prev.map((p) =>
         p.id === payoutId
