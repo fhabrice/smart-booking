@@ -27,6 +27,7 @@ import {
 } from "lucide-react"
 import { format, addDays } from "date-fns"
 import { fr } from "date-fns/locale"
+import { BOOKING_HORIZON_MONTHS, clampToBookableRange, isoDay, maxBookableDate, minBookableDate } from "@/lib/utils"
 
 export default function CartPage() {
   const {
@@ -61,6 +62,10 @@ export default function CartPage() {
   // Quick sync all items to a single date
   const [syncDate, setSyncDate] = useState(format(addDays(new Date(), 14), "yyyy-MM-dd"))
   const [syncTime, setSyncTime] = useState("10:00")
+
+  // Fenêtre de réservation commune à tout le panier : aujourd'hui → +24 mois
+  const dateMin = isoDay(minBookableDate())
+  const dateMax = isoDay(maxBookableDate())
 
   const handleApplySync = () => {
     items.forEach((item) => {
@@ -194,7 +199,9 @@ export default function CartPage() {
                     <div>
                       <h4 className="text-sm font-bold">Même date pour toute la cérémonie ?</h4>
                       <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                        Appliquez en un clic la date et l&apos;heure à l&apos;ensemble de vos prestations
+                        Appliquez en un clic la date et l&apos;heure à l&apos;ensemble de vos prestations — réservation
+                        possible sur {BOOKING_HORIZON_MONTHS} mois, jusqu&apos;au{" "}
+                        {format(maxBookableDate(), "d MMMM yyyy", { locale: fr })}
                       </p>
                     </div>
                   </div>
@@ -202,8 +209,13 @@ export default function CartPage() {
                     <input
                       type="date"
                       value={syncDate}
-                      onChange={(e) => setSyncDate(e.target.value)}
-                      className="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium dark:border-zinc-700 dark:bg-zinc-900"
+                      min={dateMin}
+                      max={dateMax}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        if (value) setSyncDate(clampToBookableRange(value))
+                      }}
+                      className="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium dark:border-zinc-700 dark:bg-zinc-900 dark:[color-scheme:dark]"
                     />
                     <input
                       type="time"
@@ -262,8 +274,13 @@ export default function CartPage() {
                             <input
                               type="date"
                               value={item.date}
-                              onChange={(e) => updateItem(item.id, { date: e.target.value })}
-                              className="rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-xs dark:border-zinc-700 dark:bg-zinc-800"
+                              min={dateMin}
+                              max={dateMax}
+                              onChange={(e) => {
+                                const value = e.target.value
+                                if (value) updateItem(item.id, { date: clampToBookableRange(value) })
+                              }}
+                              className="rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-xs dark:border-zinc-700 dark:bg-zinc-800 dark:[color-scheme:dark]"
                             />
                           </div>
                           <div className="flex items-center gap-1.5">

@@ -6,7 +6,7 @@ import { eventTypes, cities, checklistFor } from "@/lib/data"
 import { useBookings } from "@/lib/booking-context"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, CalendarDays, MapPin, Users, Wallet, StickyNote, Clock } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { BOOKING_HORIZON_MONTHS, clampToBookableRange, cn, isoDay, maxBookableDate, minBookableDate } from "@/lib/utils"
 import { format, addDays } from "date-fns"
 import { fr } from "date-fns/locale"
 
@@ -111,10 +111,18 @@ function NewEventContent() {
                 <input
                   type="date"
                   value={date}
-                  min={format(new Date(), "yyyy-MM-dd")}
-                  onChange={(e) => setDate(e.target.value)}
+                  min={isoDay(minBookableDate())}
+                  max={isoDay(maxBookableDate())}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    if (value) setDate(clampToBookableRange(value))
+                  }}
                   className="mt-1.5 w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-medium focus:border-amber-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-800 dark:[color-scheme:dark]"
                 />
+                <p className="mt-1.5 text-[11px] text-zinc-400">
+                  Planification sur {BOOKING_HORIZON_MONTHS} mois, jusqu&apos;au{" "}
+                  {format(maxBookableDate(), "d MMMM yyyy", { locale: fr })}
+                </p>
               </div>
               <div>
                 <label className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500">

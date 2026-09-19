@@ -3,10 +3,19 @@
 import { useMemo, useState } from "react"
 import { useProviderSpace } from "@/lib/provider-context"
 import { useBookings } from "@/lib/booking-context"
-import { formatPrice, bookingReference, cn } from "@/lib/utils"
+import {
+  BOOKING_HORIZON_MONTHS,
+  bookingReference,
+  cn,
+  formatPrice,
+  isoDay,
+  maxBookableDate,
+  minBookableDate,
+} from "@/lib/utils"
 import { BookingStatusBadge } from "@/components/booking-status-badge"
+import { MonthCalendar } from "@/components/month-calendar"
 import { Button } from "@/components/ui/button"
-import { addDays, format, isBefore, startOfDay } from "date-fns"
+import { format, isBefore, startOfDay, startOfMonth } from "date-fns"
 import { fr } from "date-fns/locale"
 import { CalendarClock, Phone, MapPin, Clock, PartyPopper, ChevronDown } from "lucide-react"
 import Link from "next/link"
@@ -23,7 +32,10 @@ export default function ProviderAgendaPage() {
   )
 
   const today = startOfDay(new Date())
-  const days = Array.from({ length: 30 }, (_, i) => addDays(today, i))
+  // Fenêtre consultable : aujourd'hui → +24 mois (réservations lointaines incluses)
+  const firstDay = minBookableDate()
+  const lastDay = maxBookableDate()
+  const [viewMonth, setViewMonth] = useState<Date>(() => startOfMonth(today))
 
   const upcoming = myBookings
     .filter((b) => !isBefore(new Date(b.date), today))
@@ -54,8 +66,8 @@ export default function ProviderAgendaPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Agenda des prestations</h1>
           <p className="mt-1 text-sm text-zinc-500">
-            {upcoming.length} prestation{upcoming.length > 1 ? "s" : ""} à venir sur les 30 prochains jours •{" "}
-            {past.length} réalisée{past.length > 1 ? "s" : ""}
+            {upcoming.length} prestation{upcoming.length > 1 ? "s" : ""} à venir sur {BOOKING_HORIZON_MONTHS} mois
+            consultables • {past.length} réalisée{past.length > 1 ? "s" : ""}
           </p>
         </div>
         {selectedDate && (
@@ -65,63 +77,40 @@ export default function ProviderAgendaPage() {
         )}
       </div>
 
-      {/* Bandeau 30 jours */}
+      {/* Calendrier navigable (24 mois) */}
       <div className="mt-6 rounded-[24px] border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-10">
-          {days.map((day) => {
-            const dateStr = format(day, "yyyy-MM-dd")
+        <MonthCalendar
+          viewMonth={viewMonth}
+          onViewMonthChange={setViewMonth}
+          selected={selectedDate ? new Date(`${selectedDate}T00:00:00`) : null}
+          onSelect={(day) => {
+            const dateStr = isoDay(day)
+            setSelectedDate((prev) => (prev === dateStr ? null : dateStr))
+          }}
+          minDate={firstDay}
+          maxDate={lastDay}
+          isSelectable={(day) => upcoming.some((b) => b.date === isoDay(day))}
+          renderCellExtra={(day) => {
+            const dateStr = isoDay(day)
             const dayBookings = upcoming.filter((b) => b.date === dateStr)
             const hasPending = dayBookings.some((b) => b.status === "pending")
-            const isToday = dateStr === format(today, "yyyy-MM-dd")
             const isSelected = selectedDate === dateStr
             return (
-              <button
-                key={dateStr}
-                onClick={() => setSelectedDate(isSelected ? null : dateStr)}
-                disabled={dayBookings.length === 0}
-                className={cn(
-                  "flex flex-col items-center rounded-2xl border px-1 py-2 transition-all",
-                  isSelected
-                    ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-black"
-                    : dayBookings.length > 0
-                      ? "border-amber-200 bg-amber-50 hover:border-amber-400 dark:border-amber-500/30 dark:bg-amber-500/10"
-                      : "border-zinc-100 dark:border-zinc-800/60",
-                  dayBookings.length === 0 && "cursor-default opacity-50"
-                )}
-              >
-                <span
-                  className={cn(
-                    "text-[9px] font-semibold uppercase",
-                    isSelected ? "text-white/70 dark:text-black/60" : "text-zinc-400"
-                  )}
-                >
-                  {format(day, "EEE", { locale: fr })}
-                </span>
-                <span className="mt-0.5 text-sm font-bold">{format(day, "d")}</span>
-                <span className="mt-1 flex h-3 items-center gap-0.5">
-                  {dayBookings.length === 0 ? (
-                    <span className="h-1 w-1 rounded-full bg-zinc-200 dark:bg-zinc-700" />
-                  ) : (
-                    Array.from({ length: Math.min(dayBookings.length, 3) }).map((_, i) => (
-                      <span
-                        key={i}
-                        className={cn(
-                          "h-1.5 w-1.5 rounded-full",
-                          isSelected
-                            ? "bg-white dark:bg-black"
-                            : hasPending
-                              ? "bg-amber-500"
-                              : "bg-emerald-500"
-                        )}
-                      />
-                    ))
-                  )}
-                </span>
-                {isToday && !isSelected && <span className="mt-0.5 text-[8px] font-bold text-amber-600">AUJ.</span>}
-              </button>
+              <span className="flex h-1.5 items-center gap-0.5">
+                {Array.from({ length: Math.min(dayBookings.length, 3) }).map((_, i) => (
+                  <span
+                    key={i}
+                    className={cn(
+                      "h-1.5 w-1.5 rounded-full",
+                      isSelected ? "bg-white dark:bg-black" : hasPending ? "bg-amber-500" : "bg-emerald-500"
+                    )}
+                  />
+                ))}
+              </span>
             )
-          })}
-        </div>
+          }}
+          className="border-zinc-100 p-0 dark:border-zinc-800"
+        />
         <div className="mt-3 flex flex-wrap items-center gap-4 px-1 text-[11px] text-zinc-500">
           <span className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-amber-500" /> En attente de confirmation

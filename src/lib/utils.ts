@@ -1,8 +1,46 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { addMonths, endOfDay, format, startOfDay } from "date-fns"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
+}
+
+/**
+ * Horizon de réservation de la plateforme : les calendriers (client et prestataire)
+ * couvrent 24 mois glissants à partir d'aujourd'hui.
+ */
+export const BOOKING_HORIZON_MONTHS = 24
+
+/** Date au format ISO yyyy-MM-dd (clés des cartes calendrier, champs type="date") */
+export function isoDay(date: Date) {
+  return format(date, "yyyy-MM-dd")
+}
+
+/** Première date réservable : aujourd'hui, à minuit */
+export function minBookableDate(base: Date = new Date()) {
+  return startOfDay(base)
+}
+
+/** Dernière date réservable : aujourd'hui + BOOKING_HORIZON_MONTHS, à 23h59 */
+export function maxBookableDate(base: Date = new Date()) {
+  return endOfDay(addMonths(startOfDay(base), BOOKING_HORIZON_MONTHS))
+}
+
+/**
+ * Ramène une date ISO (yyyy-MM-dd) dans la fenêtre réservable.
+ * Utilisé par les champs natifs type="date" que le navigateur laisse parfois
+ * saisir hors bornes (saisie clavier, collage).
+ */
+export function clampToBookableRange(iso: string, base: Date = new Date()) {
+  if (!iso) return iso
+  const parsed = new Date(`${iso}T00:00:00`)
+  if (Number.isNaN(parsed.getTime())) return iso
+  const min = minBookableDate(base)
+  const max = maxBookableDate(base)
+  if (parsed < min) return isoDay(min)
+  if (parsed > max) return isoDay(max)
+  return iso
 }
 
 /** Taux indicatif 1 USD ≈ FC (franc congolais) */
