@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useProviderSpace } from "@/lib/provider-context"
-import { categories, cities } from "@/lib/data"
+import { categories, cities, paymentMethods } from "@/lib/data"
 import {
   BadgeCheck,
   Star,
@@ -21,6 +21,7 @@ import {
   Mail,
   Building,
   User,
+  Smartphone,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -42,6 +43,8 @@ export default function ProviderLoginPage() {
   const [experience, setExperience] = useState("3 ans d'expérience")
   const [rccm, setRccm] = useState("")
   const [bio, setBio] = useState("")
+  const [payoutMethod, setPayoutMethod] = useState("M-Pesa")
+  const [payoutNumber, setPayoutNumber] = useState("")
   const [regError, setRegError] = useState("")
 
   // Formulaire de connexion
@@ -56,6 +59,8 @@ export default function ProviderLoginPage() {
     if (!name.trim()) return setRegError("Veuillez indiquer le nom commercial ou de votre entreprise.")
     if (!contactPerson.trim()) return setRegError("Veuillez indiquer le nom du responsable.")
     if (phone.trim().length < 8) return setRegError("Veuillez saisir un numéro de téléphone valide.")
+    if (payoutNumber.trim().length < 6)
+      return setRegError("Veuillez saisir le numéro de paiement ou le compte sur lequel les clients vous paieront.")
 
     // Vérifier si le nom existe déjà
     const exists = accounts.some((a) => a.name.toLowerCase() === name.trim().toLowerCase())
@@ -77,6 +82,8 @@ export default function ProviderLoginPage() {
       rccm: rccm.trim(),
       status: "pending",
       verified: false,
+      payoutMethod,
+      payoutNumber: payoutNumber.trim(),
     })
 
     router.push("/provider/dashboard")
@@ -126,8 +133,8 @@ export default function ProviderLoginPage() {
                 },
                 {
                   icon: Wallet,
-                  title: "Acomptes garantis",
-                  desc: "Acompte de 50% encaissé en Mobile Money (M-Pesa, Orange, Airtel) avant la date.",
+                  title: "Paiements directs garantis",
+                  desc: "Acompte de 50% versé directement sur votre numéro de paiement (M-Pesa, Orange, Airtel) avant la date.",
                 },
                 {
                   icon: ShieldCheck,
@@ -357,6 +364,58 @@ export default function ProviderLoginPage() {
                     placeholder="Ex : CD/KIN/RCCM/22-B-0987"
                     className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 py-2.5 px-4 text-xs font-medium focus:border-amber-500 focus:bg-white focus:outline-none dark:border-zinc-700 dark:bg-zinc-800"
                   />
+                </div>
+              </div>
+
+              {/* Compte de réception des paiements clients */}
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-5 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+                <div className="flex items-center gap-2 font-bold text-emerald-800 dark:text-emerald-300 text-xs">
+                  <Wallet className="h-4 w-4" /> Compte de réception des paiements *
+                </div>
+                <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+                  Les paiements des clients (acomptes et soldes) seront versés <strong>directement</strong> sur ce
+                  numéro ou ce compte. Il sera communiqué au client au moment du règlement.
+                </p>
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5">
+                      Mode de paiement *
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {paymentMethods.map((pm) => (
+                        <button
+                          key={pm.id}
+                          type="button"
+                          onClick={() => setPayoutMethod(pm.name)}
+                          className={`rounded-xl border px-2 py-2.5 text-center text-[11px] font-bold transition-all ${
+                            payoutMethod === pm.name
+                              ? "border-emerald-600 bg-emerald-600 text-white shadow-sm"
+                              : "border-zinc-200 bg-white hover:border-emerald-300 dark:border-zinc-700 dark:bg-zinc-800"
+                          }`}
+                        >
+                          {pm.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5">
+                      Numéro de paiement / N° de compte *
+                    </label>
+                    <div className="relative">
+                      <Smartphone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-600" />
+                      <input
+                        value={payoutNumber}
+                        onChange={(e) => setPayoutNumber(e.target.value)}
+                        placeholder={
+                          paymentMethods.find((p) => p.name === payoutMethod)?.hint ?? "+243 8xx xxx xxx"
+                        }
+                        type="tel"
+                        className="w-full rounded-2xl border border-zinc-200 bg-white py-2.5 pl-10 pr-4 text-xs font-medium focus:border-emerald-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800"
+                        required
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 

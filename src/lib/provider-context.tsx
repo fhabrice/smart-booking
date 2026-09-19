@@ -46,6 +46,8 @@ export const INITIAL_ACCOUNTS: ProviderAccount[] = [
     verified: true,
     avatar: "/images/avatar-1.jpg",
     registeredAt: "2025-01-10T10:00:00.000Z",
+    payoutMethod: "M-Pesa",
+    payoutNumber: "+243 821 110 021",
   },
   {
     id: "prov-palais-katanga",
@@ -66,6 +68,8 @@ export const INITIAL_ACCOUNTS: ProviderAccount[] = [
     verified: true,
     avatar: "/images/avatar-2.jpg",
     registeredAt: "2025-02-14T08:30:00.000Z",
+    payoutMethod: "Orange Money",
+    payoutNumber: "+243 998 770 032",
   },
   {
     id: "prov-kivu-lake",
@@ -86,6 +90,8 @@ export const INITIAL_ACCOUNTS: ProviderAccount[] = [
     verified: true,
     avatar: "/images/avatar-3.jpg",
     registeredAt: "2025-03-01T12:00:00.000Z",
+    payoutMethod: "Airtel Money",
+    payoutNumber: "+243 971 445 566",
   },
   {
     id: "prov-saveurs-kin",
@@ -105,6 +111,8 @@ export const INITIAL_ACCOUNTS: ProviderAccount[] = [
     verified: true,
     avatar: "/images/avatar-4.jpg",
     registeredAt: "2025-01-20T14:15:00.000Z",
+    payoutMethod: "M-Pesa",
+    payoutNumber: "+243 810 990 044",
   },
   {
     id: "prov-lumumba-events",
@@ -124,6 +132,8 @@ export const INITIAL_ACCOUNTS: ProviderAccount[] = [
     verified: true,
     avatar: "/images/avatar-5.jpg",
     registeredAt: "2025-02-05T09:00:00.000Z",
+    payoutMethod: "Orange Money",
+    payoutNumber: "+243 854 321 009",
   },
   {
     id: "prov-sound-kin",
@@ -143,6 +153,8 @@ export const INITIAL_ACCOUNTS: ProviderAccount[] = [
     verified: true,
     avatar: "/images/avatar-6.jpg",
     registeredAt: "2025-01-28T16:45:00.000Z",
+    payoutMethod: "Airtel Money",
+    payoutNumber: "+243 900 234 567",
   },
 ]
 

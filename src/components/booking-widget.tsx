@@ -18,6 +18,8 @@ import { Calendar, Clock, Check, Shield, Smartphone, PartyPopper, User, Phone } 
 import { format, startOfMonth } from "date-fns"
 import { fr } from "date-fns/locale"
 import { useBookings } from "@/lib/booking-context"
+import { useProviderSpace } from "@/lib/provider-context"
+import { resolvePaymentDestination, splitPayment } from "@/lib/commission"
 import { paymentMethods } from "@/lib/data"
 import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -34,6 +36,7 @@ export function BookingWidget({
 }) {
   const router = useRouter()
   const { addBooking, isSlotBooked, events } = useBookings()
+  const { accounts } = useProviderSpace()
   const [selectedDate, setSelectedDate] = useState<Date>(() => minBookableDate())
   const [viewMonth, setViewMonth] = useState<Date>(() => startOfMonth(minBookableDate()))
   const [selectedTime, setSelectedTime] = useState<string>("")
@@ -50,6 +53,15 @@ export function BookingWidget({
   const lastBookableDay = maxBookableDate()
 
   const deposit = Math.round(service.price * 0.5)
+
+  // Compte de réception déclaré par le prestataire (fourni à son inscription) :
+  // l'acompte du client part directement dessus. La commission de service
+  // (interne, non affichée) est calculée et jointe à la réservation.
+  const providerAccount = accounts.find(
+    (a) => a.name.toLowerCase() === service.provider.name.toLowerCase()
+  )
+  const payoutDest = resolvePaymentDestination(providerAccount)
+  const depositSplit = splitPayment(deposit)
 
   const handleBooking = async () => {
     if (!selectedTime || !name || phone.length < 8) return
@@ -73,6 +85,10 @@ export function BookingWidget({
       location: service.location,
       city: service.city,
       status: service.instant ? "confirmed" : "pending",
+      providerPayoutMethod: payoutDest.method,
+      providerPayoutNumber: payoutDest.number,
+      platformFeeUSD: depositSplit.platformFeeUSD,
+      providerNetUSD: depositSplit.providerNetUSD,
     })
     setLoading(false)
     setSuccess({ id: booking.id, status: booking.status })
@@ -117,14 +133,23 @@ export function BookingWidget({
         <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
           {confirmed ? (
             <>
-              Acompte de {formatPrice(deposit)} ({formatPriceFC(deposit)}) à payer via{" "}
-              {paymentMethods.find((p) => p.id === payment)?.name} au {phone}.
+              Acompte de {formatPrice(deposit)} ({formatPriceFC(deposit)}) à verser via{" "}
+              {paymentMethods.find((p) => p.id === payment)?.name} directement à {service.provider.name}
+              {payoutDest.number ? (
+                <>
+                  {" "}sur son compte {payoutDest.method ?? "de paiement"} :{" "}
+                  <strong className="font-semibold text-zinc-800 dark:text-zinc-200">{payoutDest.number}</strong>.
+                </>
+              ) : (
+                " — son numéro de paiement vous sera communiqué immédiatement."
+              )}
             </>
           ) : (
             <>
               {service.provider.name} doit confirmer votre créneau — réponse en moins de 2h. Acompte de{" "}
-              {formatPrice(deposit)} ({formatPriceFC(deposit)}) via{" "}
-              {paymentMethods.find((p) => p.id === payment)?.name} dès la validation.
+              {formatPrice(deposit)} ({formatPriceFC(deposit)}) à verser via{" "}
+              {paymentMethods.find((p) => p.id === payment)?.name} directement au prestataire dès la validation
+              {payoutDest.number ? <> ({payoutDest.number})</> : null}.
             </>
           )}
         </p>

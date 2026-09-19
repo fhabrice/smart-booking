@@ -3,6 +3,8 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react"
 import { CartItem, QuoteData, Service, Booking } from "./types"
 import { useBookings } from "./booking-context"
+import { useProviderSpace } from "./provider-context"
+import { resolvePaymentDestination, splitPayment } from "./commission"
 import { format, addDays } from "date-fns"
 import { syncQuote } from "./supabase/sync"
 
@@ -52,6 +54,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
   const [mounted, setMounted] = useState(false)
   const { addBooking, addEvent } = useBookings()
+  const { accounts } = useProviderSpace()
 
   useEffect(() => {
     try {
@@ -183,6 +186,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     for (const item of items) {
       const itemDeposit = Math.round(item.service.price * 0.5)
+      // Paiement direct au prestataire : compte fourni à son inscription.
+      // La commission de service (interne, non affichée) est calculée ici.
+      const providerAccount = accounts.find(
+        (a) => a.name.toLowerCase() === item.service.provider.name.toLowerCase()
+      )
+      const payoutDest = resolvePaymentDestination(providerAccount)
+      const depositSplit = splitPayment(itemDeposit)
       const b = addBooking({
         eventId,
         serviceId: item.service.id,
@@ -202,6 +212,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         location: item.service.location,
         city: item.service.city,
         status: item.service.instant ? "confirmed" : "pending",
+        providerPayoutMethod: payoutDest.method,
+        providerPayoutNumber: payoutDest.number,
+        platformFeeUSD: depositSplit.platformFeeUSD,
+        providerNetUSD: depositSplit.providerNetUSD,
       })
       createdBookings.push(b)
     }

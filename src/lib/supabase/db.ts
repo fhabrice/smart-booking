@@ -242,6 +242,11 @@ export async function insertBooking(
       customer_email: booking.customerEmail ?? null,
       location: booking.location,
       city: booking.city,
+      // Routage direct du paiement vers le compte du prestataire + répartition interne
+      provider_payout_method: booking.providerPayoutMethod ?? null,
+      provider_payout_number: booking.providerPayoutNumber ?? null,
+      platform_fee: booking.platformFeeUSD ?? null,
+      provider_net: booking.providerNetUSD ?? null,
     })
     .select("id")
     .single()
@@ -540,6 +545,10 @@ export function rowToBooking(row: Row): Booking {
     location: row.location ?? "",
     city: row.city ?? "",
     createdAt: row.created_at ?? new Date().toISOString(),
+    providerPayoutMethod: row.provider_payout_method ?? undefined,
+    providerPayoutNumber: row.provider_payout_number ?? undefined,
+    platformFeeUSD: row.platform_fee != null ? Number(row.platform_fee) : undefined,
+    providerNetUSD: row.provider_net != null ? Number(row.provider_net) : undefined,
   }
 }
 
