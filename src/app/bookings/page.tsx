@@ -1,21 +1,65 @@
 "use client"
 
+import { useState } from "react"
 import { useBookings } from "@/lib/booking-context"
+import { useMessages } from "@/lib/messages-context"
 import { formatPrice, formatPriceFC, bookingReference } from "@/lib/utils"
 import { BookingStatusBadge } from "@/components/booking-status-badge"
-import { Calendar, Clock, MapPin, X, Sparkles, ArrowRight, Search, Smartphone, PartyPopper, Phone } from "lucide-react"
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  X,
+  Sparkles,
+  ArrowRight,
+  Search,
+  Smartphone,
+  PartyPopper,
+  Phone,
+  MessageCircle,
+  Send,
+} from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
 import { categoryName } from "@/lib/data"
+import { Booking } from "@/lib/types"
 
 export default function BookingsPage() {
   const { bookings, cancelBooking, getEvent, events } = useBookings()
+  const { sendMessage, getClientProviderThread } = useMessages()
+
   const active = bookings.filter((b) => b.status !== "cancelled")
   const cancelled = bookings.filter((b) => b.status === "cancelled")
   const totalSpent = active.reduce((sum, b) => sum + b.price, 0)
   const totalDeposits = active.reduce((sum, b) => sum + b.deposit, 0)
+
+  // Modal chat client <-> prestataire
+  const [chatBooking, setChatBooking] = useState<Booking | null>(null)
+  const [clientMessage, setClientMessage] = useState("")
+
+  const activeChatMessages = chatBooking
+    ? getClientProviderThread(chatBooking.providerName, chatBooking.customerPhone)
+    : []
+
+  const handleSendChatMessage = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!clientMessage.trim() || !chatBooking) return
+
+    sendMessage({
+      threadId: `cp-${chatBooking.providerName}-${chatBooking.customerPhone}`,
+      fromRole: "client",
+      fromName: `${chatBooking.customerName} (${chatBooking.customerPhone})`,
+      toRole: "provider",
+      toName: chatBooking.providerName,
+      content: clientMessage.trim(),
+      bookingId: chatBooking.id,
+      serviceId: chatBooking.serviceId,
+    })
+
+    setClientMessage("")
+  }
 
   return (
     <div className="min-h-screen bg-[#fcfcf9] dark:bg-zinc-950">
@@ -177,6 +221,16 @@ export default function BookingsPage() {
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
+                        {/* Bouton Communication Client <-> Prestataire */}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setChatBooking(booking)}
+                          className="h-8 gap-1.5 text-xs text-amber-700 hover:bg-amber-50 dark:text-amber-400"
+                        >
+                          <MessageCircle className="h-3.5 w-3.5" /> Discuter avec {booking.providerName.split(" ")[0]}
+                        </Button>
+
                         {event && (
                           <Link href={`/events/${event.id}`}>
                             <Button variant="outline" size="sm" className="h-8 gap-1 text-xs">
@@ -220,6 +274,79 @@ export default function BookingsPage() {
           </div>
         )}
 
+        {/* MODAL DISCUSSION AVEC LE PRESTATAIRE */}
+        {chatBooking && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in">
+            <div className="relative max-w-lg w-full rounded-[28px] border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900 flex flex-col max-h-[85vh]">
+              <div className="flex items-center justify-between border-b border-zinc-100 pb-3 dark:border-zinc-800">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-red-500 text-white font-bold">
+                    {chatBooking.providerName.charAt(0)}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm">{chatBooking.providerName}</h3>
+                    <p className="text-[11px] text-zinc-500">
+                      Prestation : {chatBooking.serviceName} ({chatBooking.city})
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setChatBooking(null)}
+                  className="rounded-full p-1.5 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Messages list */}
+              <div className="flex-1 overflow-y-auto space-y-3 py-4 pr-1 text-xs">
+                {activeChatMessages.length === 0 ? (
+                  <div className="text-center py-8 text-zinc-400">
+                    Posez vos questions à <strong>{chatBooking.providerName}</strong> concernant l&apos;organisation, les horaires ou les détails logistiques.
+                  </div>
+                ) : (
+                  activeChatMessages.map((msg) => {
+                    const isClient = msg.fromRole === "client"
+                    return (
+                      <div
+                        key={msg.id}
+                        className={`flex flex-col ${isClient ? "items-end" : "items-start"}`}
+                      >
+                        <div
+                          className={`max-w-[80%] rounded-2xl px-4 py-2.5 ${
+                            isClient
+                              ? "bg-zinc-900 text-white dark:bg-white dark:text-black shadow-sm"
+                              : "bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700"
+                          }`}
+                        >
+                          <div className="text-[10px] font-bold opacity-75 mb-0.5">{msg.fromName}</div>
+                          <div>{msg.content}</div>
+                        </div>
+                        <span className="mt-1 text-[10px] text-zinc-400">
+                          {format(new Date(msg.createdAt), "d MMM à HH:mm", { locale: fr })}
+                        </span>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+
+              {/* Input */}
+              <form onSubmit={handleSendChatMessage} className="border-t border-zinc-100 pt-3 dark:border-zinc-800 flex gap-2">
+                <input
+                  value={clientMessage}
+                  onChange={(e) => setClientMessage(e.target.value)}
+                  placeholder={`Écrire à ${chatBooking.providerName}…`}
+                  className="flex-1 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-xs font-medium focus:border-amber-500 focus:bg-white focus:outline-none dark:border-zinc-700 dark:bg-zinc-800"
+                />
+                <Button type="submit" size="sm" className="gap-1 bg-gradient-to-r from-amber-500 to-red-500 text-xs font-bold">
+                  <Send className="h-3.5 w-3.5" /> Envoyer
+                </Button>
+              </form>
+            </div>
+          </div>
+        )}
+
         <div className="mt-12 rounded-[24px] bg-zinc-900 p-6 text-white dark:bg-white dark:text-black">
           <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
             <div className="flex gap-3">
@@ -227,7 +354,7 @@ export default function BookingsPage() {
                 <Sparkles className="h-5 w-5" />
               </div>
               <div>
-                <div className="font-semibold">Besoin d&apos;aide ?</div>
+                <div className="font-semibold">Besoin d&apos;aide pour votre cérémonie ?</div>
                 <div className="text-sm text-white/60 dark:text-black/60">
                   Support WhatsApp 24/7 • Réponse en moins de 5 minutes
                 </div>

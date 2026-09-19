@@ -169,7 +169,7 @@ export function BookingWidget({ service, defaultEventId }: { service: Service; d
         {/* Time slots */}
         <div className="mt-6">
           <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold">
-            <Clock className="h-4 w-4" /> Heure d'intervention
+            <Clock className="h-4 w-4" /> Heure d&apos;intervention
           </h4>
           <div className="grid max-h-[140px] grid-cols-4 gap-2 overflow-y-auto pr-1">
             {timeSlots.map((time) => {

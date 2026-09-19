@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react"
 import { eventTypes, cities } from "@/lib/data"
-import { useMergedServices } from "@/lib/provider-context"
+import { usePublicServices } from "@/lib/provider-context"
 import { ServiceCard } from "@/components/service-card"
 import { SearchBar } from "@/components/search-bar"
 import { Sparkles, Zap, Shield, Clock, Users, TrendingUp, ArrowRight, Star, Briefcase } from "lucide-react"
@@ -13,10 +13,7 @@ export default function HomePage() {
   const [query, setQuery] = useState("")
   const [category, setCategory] = useState("all")
   const [city, setCity] = useState("all")
-  const mergedServices = useMergedServices()
-
-  // Les prestations en pause sont masquées du catalogue client
-  const catalog = useMemo(() => mergedServices.filter((s) => !s.paused), [mergedServices])
+  const catalog = usePublicServices()
 
   const filtered = useMemo(() => {
     return catalog.filter((s) => {

@@ -3,31 +3,52 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect } from "react"
-import { LayoutDashboard, Ticket, Store, CalendarClock, Wallet, Eye, LogOut, BadgeCheck, Star, Sparkles } from "lucide-react"
+import {
+  LayoutDashboard,
+  Ticket,
+  Store,
+  CalendarClock,
+  Wallet,
+  Eye,
+  LogOut,
+  BadgeCheck,
+  Star,
+  Sparkles,
+  Palette,
+  BarChart3,
+  MessageSquare,
+  Headphones,
+  AlertTriangle,
+} from "lucide-react"
 import { useProviderSpace } from "@/lib/provider-context"
 import { useBookings } from "@/lib/booking-context"
 import { cn } from "@/lib/utils"
 
 const nav = [
   { href: "/provider/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
-  { href: "/provider/bookings", label: "Réservations", icon: Ticket, badge: true },
+  { href: "/provider/bookings", label: "Demandes clients", icon: Ticket, badge: true },
   { href: "/provider/services", label: "Mes prestations", icon: Store },
+  { href: "/provider/flyers", label: "Créateur d'affiches", icon: Palette },
+  { href: "/provider/reports", label: "Rapports & Chiffres", icon: BarChart3 },
+  { href: "/provider/messages", label: "Messages clients", icon: MessageSquare },
+  { href: "/provider/support", label: "Assistance Admin", icon: Headphones },
   { href: "/provider/agenda", label: "Agenda", icon: CalendarClock },
-  { href: "/provider/profile", label: "Profil & paiements", icon: Wallet },
+  { href: "/provider/profile", label: "Profil & Retraits", icon: Wallet },
 ]
 
 export function ProviderShell({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
-  const { session, mounted, logout } = useProviderSpace()
+  const { session, currentAccount, mounted, logout } = useProviderSpace()
   const { bookings } = useBookings()
 
   useEffect(() => {
     if (mounted && !session) router.replace("/provider")
   }, [mounted, session, router])
 
-  const pendingCount =
-    session ? bookings.filter((b) => b.providerName === session && b.status === "pending").length : 0
+  const pendingCount = session
+    ? bookings.filter((b) => b.providerName === session && b.status === "pending").length
+    : 0
 
   if (!mounted || !session) {
     return (
@@ -41,6 +62,8 @@ export function ProviderShell({ children }: { children: React.ReactNode }) {
   }
 
   const providerName = session
+  const isPendingApproval = currentAccount?.status === "pending"
+  const isSuspended = currentAccount?.status === "suspended"
 
   const handleLogout = () => {
     logout()
@@ -50,6 +73,45 @@ export function ProviderShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#fcfcf9] dark:bg-zinc-950">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
+        {/* Alerte si le compte est en attente ou suspendu */}
+        {isPendingApproval && (
+          <div className="mb-6 flex items-start gap-3 rounded-[24px] border border-amber-300 bg-amber-50 p-4 text-xs dark:border-amber-900/50 dark:bg-amber-950/30">
+            <Sparkles className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+            <div className="flex-1">
+              <span className="font-bold text-amber-900 dark:text-amber-200">
+                Compte en attente de vérification administrative :
+              </span>{" "}
+              <span className="text-amber-800 dark:text-amber-300">
+                Votre profil a bien été créé. Vous pouvez déjà ajouter vos prestations, concevoir vos affiches publicitaires et explorer vos rapports. Vos prestations seront validées par l&apos;administration Smart Booking avant d&apos;apparaître sur la vitrine publique.
+              </span>
+            </div>
+            <Link
+              href="/provider/support"
+              className="font-bold text-amber-900 underline hover:opacity-80 dark:text-amber-200"
+            >
+              Écrire à l&apos;admin
+            </Link>
+          </div>
+        )}
+
+        {isSuspended && (
+          <div className="mb-6 flex items-start gap-3 rounded-[24px] border border-red-300 bg-red-50 p-4 text-xs dark:border-red-900/50 dark:bg-red-950/30">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-red-600 mt-0.5" />
+            <div className="flex-1">
+              <span className="font-bold text-red-900 dark:text-red-200">Compte actuellement suspendu :</span>{" "}
+              <span className="text-red-800 dark:text-red-300">
+                Votre compte prestataire a été désactivé par l&apos;équipe d&apos;administration. Vos prestations sont temporairement masquées de la vitrine. Contactez le support administrateur pour régulariser votre situation.
+              </span>
+            </div>
+            <Link
+              href="/provider/support"
+              className="font-bold text-red-900 underline hover:opacity-80 dark:text-red-200"
+            >
+              Support admin
+            </Link>
+          </div>
+        )}
+
         <div className="grid gap-8 lg:grid-cols-[264px_1fr]">
           {/* Sidebar */}
           <aside className="hidden lg:block">
@@ -65,7 +127,15 @@ export function ProviderShell({ children }: { children: React.ReactNode }) {
                   <div className="min-w-0">
                     <div className="truncate text-sm font-bold">{providerName}</div>
                     <div className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                      <BadgeCheck className="h-3.5 w-3.5" /> Prestataire vérifié
+                      {currentAccount?.verified ? (
+                        <>
+                          <BadgeCheck className="h-3.5 w-3.5" /> Prestataire vérifié
+                        </>
+                      ) : isPendingApproval ? (
+                        <span className="text-amber-600 font-bold">🟡 En validation admin</span>
+                      ) : (
+                        <span>Partenaire Smart Booking</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -73,12 +143,12 @@ export function ProviderShell({ children }: { children: React.ReactNode }) {
                   <span className="flex items-center gap-1 text-zinc-500">
                     <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" /> Note moyenne
                   </span>
-                  <span className="font-bold">4,9/5</span>
+                  <span className="font-bold">{currentAccount?.rating?.toFixed(1) || "4,9"}/5</span>
                 </div>
               </div>
 
               {/* Nav */}
-              <nav className="grid gap-1.5 rounded-[24px] border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
+              <nav className="grid gap-1 rounded-[24px] border border-zinc-200 bg-white p-2.5 dark:border-zinc-800 dark:bg-zinc-900">
                 {nav.map((item) => {
                   const active = pathname === item.href
                   return (
@@ -86,7 +156,7 @@ export function ProviderShell({ children }: { children: React.ReactNode }) {
                       key={item.href}
                       href={item.href}
                       className={cn(
-                        "flex items-center justify-between rounded-2xl px-4 py-2.5 text-sm font-medium transition-colors",
+                        "flex items-center justify-between rounded-2xl px-3.5 py-2 text-xs font-semibold transition-colors",
                         active
                           ? "bg-zinc-900 text-white shadow-sm dark:bg-white dark:text-black"
                           : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
@@ -97,7 +167,7 @@ export function ProviderShell({ children }: { children: React.ReactNode }) {
                         {item.label}
                       </span>
                       {item.badge && pendingCount > 0 && (
-                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-bold text-white">
+                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white">
                           {pendingCount}
                         </span>
                       )}
@@ -107,13 +177,13 @@ export function ProviderShell({ children }: { children: React.ReactNode }) {
                 <div className="my-1.5 h-px bg-zinc-100 dark:bg-zinc-800" />
                 <Link
                   href="/"
-                  className="flex items-center gap-2.5 rounded-2xl px-4 py-2.5 text-sm font-medium text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-white"
+                  className="flex items-center gap-2.5 rounded-2xl px-3.5 py-2 text-xs font-medium text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-white"
                 >
                   <Eye className="h-4 w-4" /> Voir la vitrine publique
                 </Link>
                 <button
                   onClick={handleLogout}
-                  className="flex items-center gap-2.5 rounded-2xl px-4 py-2.5 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:hover:bg-red-950/30"
+                  className="flex items-center gap-2.5 rounded-2xl px-3.5 py-2 text-left text-xs font-medium text-red-600 transition-colors hover:bg-red-50 dark:hover:bg-red-950/30"
                 >
                   <LogOut className="h-4 w-4" /> Se déconnecter
                 </button>
@@ -133,7 +203,13 @@ export function ProviderShell({ children }: { children: React.ReactNode }) {
                   <div className="min-w-0">
                     <div className="truncate text-sm font-bold">{providerName}</div>
                     <div className="flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                      <BadgeCheck className="h-3 w-3" /> Vérifié
+                      {currentAccount?.verified ? (
+                        <>
+                          <BadgeCheck className="h-3 w-3" /> Vérifié
+                        </>
+                      ) : (
+                        <span className="text-amber-600">En validation</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -153,7 +229,7 @@ export function ProviderShell({ children }: { children: React.ReactNode }) {
                       key={item.href}
                       href={item.href}
                       className={cn(
-                        "flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold transition-colors",
+                        "flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors",
                         active
                           ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-black"
                           : "border-zinc-200 bg-white text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400"

@@ -6,6 +6,9 @@ export interface Provider {
   rating: number
 }
 
+export type AdminApprovalStatus = "approved" | "pending" | "rejected"
+export type ProviderStatus = "approved" | "pending" | "suspended"
+
 export interface Service {
   id: string
   name: string
@@ -27,6 +30,9 @@ export interface Service {
   instant?: boolean
   paused?: boolean // mis en pause par le prestataire (invisible côté clients)
   custom?: boolean // prestation créée depuis l'espace prestataires
+  adminApprovalStatus?: AdminApprovalStatus // statut de modération admin
+  adminFeedback?: string // commentaire éventuel de l'admin
+  isDeleted?: boolean // supprimé par l'admin
 }
 
 export type Currency = "USD" | "FC"
@@ -98,11 +104,19 @@ export type ChecklistItem = {
   label: string
 }
 
-/** Modifications faites par un prestataire sur l'une de ses prestations (espace prestataires) */
+/** Modifications faites par un prestataire ou par l'admin sur une prestation */
 export interface ServiceOverride {
   price?: number // nouveau prix USD
   paused?: boolean // prestation en pause (masquée du catalogue client)
   instant?: boolean // réservation instantanée activée/désactivée
+  name?: string
+  category?: string
+  city?: string
+  location?: string
+  description?: string
+  adminApprovalStatus?: AdminApprovalStatus
+  adminFeedback?: string
+  isDeleted?: boolean
 }
 
 /** Profil éditable d'un prestataire (coordonnées + retraits Mobile Money) */
@@ -114,5 +128,102 @@ export interface ProviderProfileData {
   payoutMethod?: string // "M-Pesa" | "Orange Money" | "Airtel Money"
   payoutNumber?: string
 }
+
+/** Compte officiel d'un prestataire enregistré sur Smart Booking */
+export interface ProviderAccount {
+  id: string
+  name: string // Raison sociale / Nom commercial
+  contactPerson: string
+  phone: string
+  whatsapp: string
+  email: string
+  city: string
+  location: string
+  category: string
+  experience: string
+  bio: string
+  rccm?: string
+  idNat?: string
+  status: ProviderStatus
+  rating: number
+  reviewsCount: number
+  verified: boolean
+  avatar: string
+  registeredAt: string
+  adminNotes?: string
+}
+
+/** Élément du panier multi-prestations client */
+export interface CartItem {
+  id: string
+  serviceId: string
+  service: Service
+  date: string // yyyy-MM-dd
+  time: string // HH:mm
+  notes?: string
+}
+
+/** Données pour devis officiel et facture */
+export interface QuoteData {
+  quoteNumber: string
+  date: string
+  validUntil: string
+  customerName: string
+  customerPhone: string
+  customerEmail?: string
+  ceremonyType?: string
+  ceremonyDate?: string
+  city?: string
+  items: CartItem[]
+  subtotal: number // USD
+  discount: number // USD
+  total: number // USD
+  deposit: number // USD
+  balance: number // USD
+  notes?: string
+}
+
+/** Message dans les fils de discussion (Client <-> Prestataire et Prestataire <-> Admin) */
+export interface ChatMessage {
+  id: string
+  threadId: string
+  fromRole: "client" | "provider" | "admin"
+  fromName: string
+  toRole: "client" | "provider" | "admin"
+  toName: string
+  content: string
+  createdAt: string
+  bookingId?: string
+  serviceId?: string
+  read?: boolean
+}
+
+/** Demande de retrait Mobile Money par un prestataire */
+export interface PayoutRequest {
+  id: string
+  providerName: string
+  amountUSD: number
+  amountFC: number
+  method: "M-Pesa" | "Orange Money" | "Airtel Money"
+  phoneNumber: string
+  status: "pending" | "processing" | "processed" | "paid" | "rejected"
+  requestedAt: string
+  processedAt?: string
+  transactionRef?: string
+  notes?: string
+  adminNotes?: string
+}
+
+/** Journal d'activité de la plateforme pour l'administration */
+export interface ActivityLogItem {
+  id: string
+  type: "provider_register" | "service_submit" | "service_approve" | "service_reject" | "booking_created" | "payout_request"
+  title: string
+  description: string
+  timestamp: string
+}
+
+/** Thèmes pour le générateur d'affiches */
+export type FlyerTheme = "gold" | "dark" | "rose" | "emerald"
 
 export type BookingStatus = Booking["status"]

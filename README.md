@@ -2,123 +2,129 @@
 
 > Tous les services de votre cérémonie, réservés en 30 secondes.
 
-**Smart Booking RDC** est une plateforme congolaise de réservation de **tous les services nécessaires à l'organisation d'une cérémonie** : mariage, dotation, baptême/doto, anniversaire, funérailles, événement d'entreprise. Construite avec **Next.js 16**, **Tailwind CSS v4**, **TypeScript** et une UX ultra-léche.
+**Smart Booking RDC** est la plateforme congolaise de réservation de **tous les services de cérémonie** : mariage, dotation, baptême/doto, anniversaire, funérailles, événement d'entreprise. Construite avec **Next.js 16**, **Tailwind CSS v4**, **TypeScript** et une UX professionnelle et intuitive.
 
-Basée en **RD Congo** 🇨🇩 — prix en **USD + Franc Congolais (FC)**, paiement **M-Pesa / Orange Money / Airtel Money**.
+Basée en **RD Congo** 🇨🇩 — prix affichés en **USD + Franc Congolais (FC)**, paiements Mobile Money **Vodacom M-Pesa / Orange Money / Airtel Money**.
 
 ---
 
-## 🚀 Stack
+## 🚀 Stack Technique
 
 - **Next.js 16.3** (App Router, Turbopack)
 - **React 19**
 - **Tailwind CSS v4**
 - **TypeScript**
-- **Lucide React** — icons
+- **Lucide React** — icônes
 - **date-fns** — dates (locale fr)
-- **LocalStorage** — persistance cérémonies + réservations (démo sans backend)
-- Images locales (`public/images/`) — fonctionne hors-ligne
+- **HTML5 Canvas** — génération et export haute définition des affiches promotionnelles (PNG 1080x1080)
+- **LocalStorage** — persistance complète : comptes prestataires, modération admin, devis/panier, réservations, messages (démo sans backend)
+- Images locales (`public/images/`) — autonomie et rapidité
 
 ---
 
-## ✨ Fonctionnalités
+## ✨ Nouvelles Fonctionnalités Majeures
 
-### 🏠 Page d'accueil
-- Hero immersif (mariage traditionnel congolais)
-- Recherche : service + **filtre par ville** (Kinshasa, Lubumbashi, Goma, Bukavu, Kisangani, Matadi, Mbuji-Mayi, Kananga)
-- 9 catégories de services : 🏛️ Salles, 🍲 Traiteur, 🎀 Décoration, 🔊 Sono/DJ, 📸 Photo/Vidéo, 💄 Beauté & Mode, 🚗 Transport, 🎤 Animation, 🎂 Gâteaux
-- **20 prestataires vérifiés** avec prix USD + équivalent FC
-- Section « Quelle cérémonie préparez-vous ? » (6 types)
+### 1. 🤝 Inscription & Connexion Prestataire (`/provider`)
+- **Inscription préalable obligatoire** : formulaire d'adhésion complet pour tout nouvel établissement :
+  - Nom commercial de l'entreprise
+  - Responsable & contact
+  - Numéro Téléphone & WhatsApp Pro (+243)
+  - Ville (Kinshasa, Goma, Lubumbashi, Bukavu...) & Commune/Quartier
+  - Catégorie d'activité principale
+  - Années d'expérience & Numéro RCCM / Id Nat (pour vérification)
+  - Présentation & bio
+- **Statut d'adhésion** : nouveau compte en attente de validation administrative (visible côté admin), avec accès immédiat à son tableau de bord pour préparer ses services et affiches.
+- **Connexion** : accès rapide aux comptes enregistrés et aux comptes de démonstration.
 
-### 🎊 Planificateur de cérémonie `/events/new`
-- Choix du type (mariage, dotation, anniversaire, baptême/doto, funérailles, entreprise)
-- Date, heure, ville, lieu, invités, budget USD, notes
-- Génère la **checklist complète des prestations** selon le type
+### 2. 🎨 Générateur d'Affiches Publicitaires / Flyers (`/provider/flyers`)
+- Studio interactif de création d'affiches promotionnelles pour les réseaux sociaux (WhatsApp Status, Facebook, Instagram) :
+  - Sélection de la prestation à promouvoir
+  - Titres d'accroche personnalisables (*« OFFRE SPÉCIALE CÉRÉMONIE 2026 »*, *« PACK MARIAGE VIP »*...)
+  - 4 thèmes visuels soignés :
+    - 🌟 **Or Prestige & Noir** (mariage chic, royal)
+    - ⚡ **Nuit Électrique & Sono** (DJ, ambiance festive, concert)
+    - 🌸 **Cérémonie Rose & Ivoire** (fleurs, décoration, beauté)
+    - 🌿 **Émeraude & Nature RDC** (authenticité, traiteur traditionnel)
+  - Badges promotionnels (*-15% ce mois-ci*, *Acompte 50% Mobile Money*...)
+  - Coordonnées WhatsApp directes et mention Smart Booking RDC
+- **Export HD** : téléchargement instantané d'une affiche PNG haute résolution (1080×1080 px) via HTML5 Canvas.
+- **Partage WhatsApp** : génération en 1 clic d'un lien avec texte promotionnel pré-rempli.
+- **Copie presse-papier** : copie du texte publicitaire prêt à être posté.
 
-### 📊 Tableau de bord cérémonie `/events/[id]`
-- Barre de progression des prestations réservées
-- Suivi du **budget** (engagé vs budget total)
-- Checklist interactive → recommandations de prestataires de **votre ville en premier**
-- **Déroulé du jour J** (timeline chronologique)
-- Gestion/annulation des réservations de l'événement
+### 3. 📊 Rapports & Statistiques Financières Prestataire (`/provider/reports`)
+- Suivi du chiffre d'affaires brut, des acomptes Mobile Money perçus et du solde à encaisser sur place le jour J.
+- Panier moyen par client et taux de conversion des demandes.
+- Graphique d'évolution du volume d'affaires sur 6 mois.
+- Répartition précise des encaissements par opérateur Mobile Money (M-Pesa, Orange Money, Airtel Money).
+- Fonction **Impression / Export PDF** du bilan d'activité.
 
-### 🔍 Service Detail `/services/[id]`
-- Gallery + badges Populaire/Instantané
-- Infos prestataire vérifié + inclusions
-- Avis clients (mariage, dotation, doto…)
-- **Booking Widget** :
-  - Calendrier 14 jours + créneaux 6h–23h
-  - Détection de conflits (localStorage)
-  - **Rattachement à une cérémonie** existante
-  - Formulaire client : nom + **téléphone** (+243)
-  - **Paiement Mobile Money** : M-Pesa, Orange Money, Airtel Money
-  - **Acompte 50 %** (USD + FC) / solde sur place
-  - Référence de réservation `SB-XXXXXXX`
+### 4. 📝 Publication de Services sous Approbation Admin (`/provider/services`)
+- Les nouvelles prestations créées par un prestataire sont soumises à **validation administrative** (`adminApprovalStatus: "pending"`).
+- Seules les prestations approuvées par l'administrateur sont publiées sur la vitrine client publique.
+- Statuts visibles côté prestataire :
+  - 🟢 **Approuvé & En ligne**
+  - 🟡 **En attente d'approbation admin**
+  - 🔴 **Refusé par l'admin** (avec motif explicatif pour correction)
+  - ⏸️ **En pause**
+- Modification en direct du tarif USD, de la réservation instantanée et des détails.
 
-### 📅 Mes Réservations `/bookings`
-- Totaux : engagements, acomptes, solde sur place (USD + FC)
-- Lien vers la cérémonie rattachée
-- Annulation instantanée
-- Statuts en temps réel : **En attente** / **Confirmée** / **Terminée** / **Annulée**
+### 5. 🛡️ Espace Super-Admin (`/admin`)
+Espace d'administration centralisé pour superviser la plateforme Smart Booking RDC :
+- **Tableau de bord Admin (`/admin`)** :
+  - KPIs plateforme (total prestataires, services en attente, volume financier global, commissions 10%)
+  - Files d'attente prioritaires (nouveaux prestataires à valider, nouvelles publications à modérer)
+  - Derniers messages échangés
+- **Gestion des prestataires (`/admin/providers`)** :
+  - Liste de tous les prestataires (démo et inscrits)
+  - Actions : **Accepter / Valider**, **Suspendre / Enlever de la vitrine**, **Modifier** les informations, **Supprimer**, ou **Créer manuellement** un prestataire.
+- **Modération des services (`/admin/services`)** :
+  - Filtrage par statut (*À valider, Approuvés, Rejetés, En pause*)
+  - Actions : **Approuver et mettre en ligne**, **Rejeter avec motif**, **Modifier** les prix/textes, **Supprimer / Enlever du catalogue**.
+- **Messagerie Admin (`/admin/messages`)** :
+  - Réception et traitement direct des messages des prestataires.
 
-### 🤝 Espace Prestataires `/provider`
-Un tableau de bord complet pour les prestataires de cérémonie (connexion démo : choisissez un compte parmi les 20 prestataires vérifiés) :
+### 6. 🛒 Panier Multi-Prestations, Devis Estimatif Pro-Forma & Facture (`/cart`)
+- Le client peut ajouter plusieurs prestations complémentaires à son devis (salle + traiteur + sono + photographe + décoration).
+- **Synchronisation en 1 clic** : application automatique de la même date et heure à l'ensemble du pack cérémonie.
+- **Remise Pack Cérémonie (-5%)** appliquée automatiquement dès 3 services réservés ensemble.
+- **Générateur de DEVIS ESTIMATIF PRO-FORMA officiel** :
+  - Référence `DEV-2026-XXXX`
+  - Validité 30 jours, coordonnées de l'organisateur, détail ligne par ligne (USD et FC)
+  - Acompte 50% Mobile Money et solde sur place
+  - Tampon digital officiel « CERTIFIÉ CONFORME SMART BOOKING RDC »
+  - Boutons Imprimer / PDF et Partager sur WhatsApp
+- **Générateur de FACTURE Proforma d'acompte** :
+  - Référence `FACT-2026-XXXX`
+  - Détail des acomptes et numéros marchands M-Pesa, Orange Money, Airtel Money
+- **Validation du panier** : réservation groupée créant automatiquement toutes les réservations dans le système.
 
-**Connexion `/provider`**
-- Présentation des avantages (réservations en continu, acomptes garantis Mobile Money, clients vérifiés)
-- Connexion démo sans mot de passe — les données restent sur l'appareil
-
-**Tableau de bord `/provider/dashboard`**
-- KPIs : volume d'affaires (USD + FC), acomptes reçus, solde à encaisser sur place, demandes en attente
-- Graphique des revenus sur 6 mois
-- Demandes à confirmer en un clic (confirmer / refuser)
-- Prochaines prestations + aperçu des prestations en ligne / en pause
-- Bouton « Charger des réservations de démo » pour explorer avec des données réalistes
-
-**Réservations reçues `/provider/bookings`**
-- Filtres par statut + recherche (client, référence `SB-XXXXXXX`, téléphone)
-- Actions prestataire : **confirmer**, **refuser**, **marquer terminée**, **annuler**
-- Détails client (nom, téléphone), paiement Mobile Money, cérémonie rattachée
-
-**Mes prestations `/provider/services`**
-- Modification du prix en ligne (USD, équivalent FC automatique)
-- Mise en **pause** d'une prestation (masquée du catalogue client) / remise en ligne
-- Activation/désactivation de la **réservation instantanée** (sinon demande à confirmer < 2h)
-- **Création de nouvelles prestations** (catégorie, ville, prix, durée, points forts, photo…) — publiées immédiatement dans le catalogue client
-- Stats par prestation : réservations et revenus générés
-
-**Agenda `/provider/agenda`**
-- Calendrier 30 jours avec indicateurs (en attente / confirmée)
-- Prestations groupées par jour + historique passé
-
-**Profil & paiements `/provider/profile`**
-- Coordonnées (téléphone, WhatsApp, email, présentation) affichées sur la vitrine publique
-- Compte de retrait Mobile Money (M-Pesa / Orange Money / Airtel Money)
-
-**Intégration catalogue client** : les prix modifiés, les prestations mises en pause et les nouvelles prestations créées dans l'espace prestataires sont **immédiatement répercutés** sur la vitrine publique (accueil, page service, recommandations de cérémonie).
+### 7. 💬 Messagerie Intégrée Bidirectionnelle
+- **Client <-> Prestataire** :
+  - Accessible depuis `/bookings` (*« Discuter avec le prestataire »*) et `/services/[id]`
+  - Côté prestataire dans `/provider/messages` et `/provider/bookings`
+  - Échange sur les aspects logistiques, le menu, la décoration ou les horaires.
+- **Prestataire <-> Administrateur** :
+  - Accessible depuis `/provider/support`
+  - Côté admin dans `/admin/messages`
+  - Demandes d'approbation rapide, questions sur les retraits Mobile Money, certification RCCM.
 
 ---
 
-## 💰 Devises
+## 🗺️ Villes couvertes en RDC
 
-| Affichage | Exemple |
-|---|---|
-| Dollar américain (principal) | $450 |
-| Franc congolais (taux indicatif 1 USD ≈ 2 850 FC) | ≈ 1 282 500 FC |
+Kinshasa · Lubumbashi · Goma · Bukavu · Kisangani · Matadi · Mbuji-Mayi · Kananga
 
 ---
 
-## 🛠️ Démarrage
+## 🛠️ Démarrage rapide
 
 ```bash
 npm install
 npm run dev
 ```
 
-Ouvrir [http://localhost:3000](http://localhost:3000).
-
----
-
-## 🗺️ Villes couvertes
-
-Kinshasa · Lubumbashi · Goma · Bukavu · Kisangani · Matadi · Mbuji-Mayi · Kananga
+Ouvrez [http://localhost:3000](http://localhost:3000) dans votre navigateur.
+- **Vitrine client** : `/`
+- **Panier & Devis** : `/cart`
+- **Espace Prestataires** : `/provider`
+- **Espace Super-Admin** : `/admin` (Code PIN par défaut : `admin243` ou bouton 1-clic)
