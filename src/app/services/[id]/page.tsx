@@ -1,9 +1,10 @@
 "use client"
 
 import { useParams, useSearchParams } from "next/navigation"
-import { services, categoryName } from "@/lib/data"
+import { categoryName } from "@/lib/data"
+import { useMergedServices, useProviderProfile } from "@/lib/provider-context"
 import { formatPrice, formatPriceFC } from "@/lib/utils"
-import { Star, MapPin, Clock, Shield, Check, ArrowLeft, Heart, Share2, Award, Sparkles, Users } from "lucide-react"
+import { Star, MapPin, Clock, Shield, Check, ArrowLeft, Heart, Share2, Award, Sparkles, Users, Phone, PauseCircle } from "lucide-react"
 import Link from "next/link"
 import { BookingWidget } from "@/components/booking-widget"
 import { Suspense, useState } from "react"
@@ -34,7 +35,9 @@ function ServicePageContent() {
   const searchParams = useSearchParams()
   const eventId = searchParams.get("event") ?? undefined
   const id = params.id as string
+  const services = useMergedServices()
   const service = services.find((s) => s.id === id)
+  const providerProfile = useProviderProfile(service?.provider.name ?? null)
   const [liked, setLiked] = useState(false)
 
   if (!service) {
@@ -57,6 +60,16 @@ function ServicePageContent() {
         >
           <ArrowLeft className="h-4 w-4" /> Retour
         </Link>
+
+        {service.paused && (
+          <div className="mt-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-500/10">
+            <PauseCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+            <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+              Cette prestation est temporairement en pause — le prestataire a suspendu les réservations.
+              Consultez d&apos;autres prestataires vérifiés dans la même catégorie.
+            </p>
+          </div>
+        )}
 
         <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-[1.6fr_1fr]">
           {/* Left */}
@@ -164,7 +177,7 @@ function ServicePageContent() {
                   <div>
                     <div className="text-sm font-semibold">Conseil Smart Booking</div>
                     <p className="mt-1 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                      Pour une cérémonie sereine : réservez cette prestation au moins 3 semaines à l'avance, surtout pour les
+                      Pour une cérémonie sereine : réservez cette prestation au moins 3 semaines à l&apos;avance, surtout pour les
                       samedi. Acompte de 50% en Mobile Money, solde réglé sur place le jour J. Créneau le plus demandé :
                       10h-16h.
                     </p>
@@ -204,7 +217,7 @@ function ServicePageContent() {
             <div className="mt-4 rounded-[20px] border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
               <div className="flex items-center gap-3">
                 <img src={service.provider.avatar} className="h-10 w-10 rounded-full object-cover" alt="" />
-                <div>
+                <div className="min-w-0">
                   <div className="text-sm font-semibold">{service.provider.name}</div>
                   <div className="text-xs text-zinc-500">Répond en ~5 min • {service.provider.experience}</div>
                 </div>
@@ -213,6 +226,23 @@ function ServicePageContent() {
                   <div className="text-[11px] text-amber-700 dark:text-amber-400">≈ {formatPriceFC(service.price)}</div>
                 </div>
               </div>
+              {(providerProfile.phone || providerProfile.whatsapp) && (
+                <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+                  {providerProfile.phone && (
+                    <span className="flex items-center gap-1.5 rounded-full bg-zinc-50 px-3 py-1.5 text-xs font-medium dark:bg-zinc-800">
+                      <Phone className="h-3 w-3 text-zinc-400" /> {providerProfile.phone}
+                    </span>
+                  )}
+                  {providerProfile.whatsapp && (
+                    <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+                      WhatsApp : {providerProfile.whatsapp}
+                    </span>
+                  )}
+                  {providerProfile.bio && (
+                    <span className="line-clamp-1 text-xs text-zinc-500">{providerProfile.bio}</span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

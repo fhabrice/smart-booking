@@ -3,7 +3,8 @@
 import { useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useBookings } from "@/lib/booking-context"
-import { categoryName, checklistFor, eventTypeOf, services } from "@/lib/data"
+import { categoryName, checklistFor, eventTypeOf } from "@/lib/data"
+import { useMergedServices } from "@/lib/provider-context"
 import { ServiceCard } from "@/components/service-card"
 import { Button } from "@/components/ui/button"
 import { formatPrice, formatPriceFC, cn, bookingReference } from "@/lib/utils"
@@ -28,6 +29,7 @@ export default function EventPage() {
   const params = useParams()
   const router = useRouter()
   const { getEvent, getEventBookings, eventBudgetUsed, cancelBooking, mounted } = useBookings()
+  const allServices = useMergedServices()
   const event = getEvent(params.id as string)
   const [selectedCat, setSelectedCat] = useState<string | null>(null)
 
@@ -61,8 +63,8 @@ export default function EventPage() {
   const budgetPct = event.budget > 0 ? Math.min(Math.round((used / event.budget) * 100), 100) : 0
 
   const focusCat = selectedCat ?? checklist.find((c) => !reservedCats.has(c.category))?.category ?? "all"
-  const recommendations = services
-    .filter((s) => s.category === focusCat)
+  const recommendations = allServices
+    .filter((s) => s.category === focusCat && !s.paused)
     .sort((a, b) => (a.city === event.city ? -1 : 0) - (b.city === event.city ? -1 : 0))
 
   const timeline = [...bookings].sort((a, b) => a.time.localeCompare(b.time))

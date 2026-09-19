@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { CalendarDays, Sparkles, Menu, X, Plus, Ticket } from "lucide-react"
+import { CalendarDays, Sparkles, Menu, X, Plus, Ticket, Briefcase } from "lucide-react"
 import { useState } from "react"
 import { useBookings } from "@/lib/booking-context"
 import { Button } from "./ui/button"
@@ -15,11 +15,21 @@ export function Header() {
 
   const activeBookings = bookings.filter((b) => b.status !== "cancelled").length
 
-  const nav = [
+  const nav: Array<{
+    href: string
+    label: string
+    icon: typeof Sparkles
+    badge?: number
+    matchPrefix?: boolean
+  }> = [
     { href: "/", label: "Découvrir", icon: Sparkles },
     { href: "/events/new", label: "Créer une cérémonie", icon: Plus },
     { href: "/bookings", label: "Mes réservations", icon: Ticket, badge: activeBookings || undefined },
+    { href: "/provider", label: "Espace prestataires", icon: Briefcase, matchPrefix: true },
   ]
+
+  const isActive = (item: (typeof nav)[number]) =>
+    pathname === item.href || (!!item.matchPrefix && pathname.startsWith(item.href + "/"))
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-zinc-100 bg-white/80 backdrop-blur-xl dark:border-zinc-800 dark:bg-zinc-950/80">
@@ -46,7 +56,7 @@ export function Header() {
                 href={item.href}
                 className={cn(
                   "relative flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors",
-                  pathname === item.href
+                  isActive(item)
                     ? "bg-zinc-900 text-white dark:bg-white dark:text-black"
                     : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
                 )}
@@ -97,7 +107,7 @@ export function Header() {
                 onClick={() => setMobileOpen(false)}
                 className={cn(
                   "flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-medium",
-                  pathname === item.href
+                  isActive(item)
                     ? "bg-zinc-900 text-white dark:bg-white dark:text-black"
                     : "bg-zinc-50 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
                 )}

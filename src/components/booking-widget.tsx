@@ -22,7 +22,7 @@ export function BookingWidget({ service, defaultEventId }: { service: Service; d
   const [phone, setPhone] = useState("")
   const [payment, setPayment] = useState("mpesa")
   const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState<string | null>(null)
+  const [success, setSuccess] = useState<{ id: string; status: string } | null>(null)
 
   const dates = Array.from({ length: 14 }, (_, i) => addDays(new Date(), i))
   const timeSlots = generateTimeSlots()
@@ -51,25 +51,64 @@ export function BookingWidget({ service, defaultEventId }: { service: Service; d
       providerName: service.provider.name,
       location: service.location,
       city: service.city,
+      status: service.instant ? "confirmed" : "pending",
     })
     setLoading(false)
-    setSuccess(booking.id)
-    setTimeout(() => router.push("/bookings"), 1600)
+    setSuccess({ id: booking.id, status: booking.status })
+    setTimeout(() => router.push("/bookings"), 2000)
+  }
+
+  if (service.paused) {
+    return (
+      <div className="sticky top-24 rounded-[24px] border border-zinc-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+          <Calendar className="h-7 w-7 text-zinc-400" />
+        </div>
+        <h3 className="mt-4 text-lg font-semibold">Prestation en pause</h3>
+        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+          {service.provider.name} a temporairement suspendu cette prestation. Réessayez dans quelques jours ou
+          consultez d&apos;autres prestataires vérifiés.
+        </p>
+      </div>
+    )
   }
 
   if (success) {
+    const confirmed = success.status === "confirmed"
     return (
-      <div className="rounded-[24px] border border-emerald-200 bg-emerald-50 p-8 text-center dark:border-emerald-900 dark:bg-emerald-950/30">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500 text-white">
-          <Check className="h-7 w-7" />
+      <div
+        className={`rounded-[24px] border p-8 text-center ${
+          confirmed
+            ? "border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30"
+            : "border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30"
+        }`}
+      >
+        <div
+          className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full text-white ${
+            confirmed ? "bg-emerald-500" : "bg-amber-500"
+          }`}
+        >
+          {confirmed ? <Check className="h-7 w-7" /> : <Clock className="h-7 w-7" />}
         </div>
-        <h3 className="mt-4 text-lg font-semibold">Réservation confirmée ! 🎉</h3>
+        <h3 className="mt-4 text-lg font-semibold">
+          {confirmed ? "Réservation confirmée ! 🎉" : "Demande envoyée ! 🎉"}
+        </h3>
         <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-          Acompte de {formatPrice(deposit)} ({formatPriceFC(deposit)}) à payer via{" "}
-          {paymentMethods.find((p) => p.id === payment)?.name} au {phone}.
+          {confirmed ? (
+            <>
+              Acompte de {formatPrice(deposit)} ({formatPriceFC(deposit)}) à payer via{" "}
+              {paymentMethods.find((p) => p.id === payment)?.name} au {phone}.
+            </>
+          ) : (
+            <>
+              {service.provider.name} doit confirmer votre créneau — réponse en moins de 2h. Acompte de{" "}
+              {formatPrice(deposit)} ({formatPriceFC(deposit)}) via{" "}
+              {paymentMethods.find((p) => p.id === payment)?.name} dès la validation.
+            </>
+          )}
         </p>
         <div className="mt-3 rounded-xl bg-white px-4 py-2 font-mono text-sm font-bold dark:bg-zinc-900">
-          {bookingReference(success)}
+          {bookingReference(success.id)}
         </div>
         <p className="mt-3 text-xs text-zinc-500">Redirection vers vos réservations…</p>
       </div>
@@ -88,7 +127,7 @@ export function BookingWidget({ service, defaultEventId }: { service: Service; d
             <div className="mt-1 text-xs font-medium text-amber-700 dark:text-amber-400">≈ {formatPriceFC(service.price)}</div>
           </div>
           <div className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
-            ⚡ Réponse immédiate
+            {service.instant ? "⚡ Réponse immédiate" : "⏱ Confirmation < 2h"}
           </div>
         </div>
 
@@ -280,12 +319,12 @@ export function BookingWidget({ service, defaultEventId }: { service: Service; d
           {loading ? (
             <>
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-              Confirmation…
+              {service.instant ? "Confirmation…" : "Envoi de la demande…"}
             </>
           ) : (
             <>
               <Shield className="h-4 w-4" />
-              Réserver • acompte {formatPrice(deposit)}
+              {service.instant ? "Réserver • acompte" : "Envoyer la demande •"} {formatPrice(deposit)}
             </>
           )}
         </Button>

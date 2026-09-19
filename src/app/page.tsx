@@ -1,10 +1,11 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { services, eventTypes, cities } from "@/lib/data"
+import { eventTypes, cities } from "@/lib/data"
+import { useMergedServices } from "@/lib/provider-context"
 import { ServiceCard } from "@/components/service-card"
 import { SearchBar } from "@/components/search-bar"
-import { Sparkles, Zap, Shield, Clock, Users, TrendingUp, ArrowRight, Star } from "lucide-react"
+import { Sparkles, Zap, Shield, Clock, Users, TrendingUp, ArrowRight, Star, Briefcase } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 
@@ -12,9 +13,13 @@ export default function HomePage() {
   const [query, setQuery] = useState("")
   const [category, setCategory] = useState("all")
   const [city, setCity] = useState("all")
+  const mergedServices = useMergedServices()
+
+  // Les prestations en pause sont masquées du catalogue client
+  const catalog = useMemo(() => mergedServices.filter((s) => !s.paused), [mergedServices])
 
   const filtered = useMemo(() => {
-    return services.filter((s) => {
+    return catalog.filter((s) => {
       const q = query.toLowerCase()
       const matchQuery =
         !query ||
@@ -26,7 +31,14 @@ export default function HomePage() {
       const matchCity = city === "all" || s.city === city
       return matchQuery && matchCat && matchCity
     })
-  }, [query, category, city])
+  }, [catalog, query, category, city])
+
+  // Compteurs par catégorie (dynamiques : prestations prestataires incluses, pauses exclues)
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { all: catalog.length }
+    for (const s of catalog) c[s.category] = (c[s.category] ?? 0) + 1
+    return c
+  }, [catalog])
 
   const featured = filtered.find((s) => s.popular) || filtered[0]
   const rest = filtered.filter((s) => s.id !== featured?.id)
@@ -98,6 +110,7 @@ export default function HomePage() {
               onCityChange={setCity}
               activeCategory={category}
               activeCity={city}
+              counts={counts}
             />
           </div>
 
@@ -202,6 +215,30 @@ export default function HomePage() {
             ))}
           </div>
         )}
+
+        {/* CTA Prestataires */}
+        <div className="mt-16 overflow-hidden rounded-[32px] border border-amber-200 bg-gradient-to-r from-amber-50 via-orange-50 to-red-50 p-6 dark:border-amber-500/30 dark:from-amber-950/20 dark:via-zinc-900 dark:to-red-950/20 sm:p-8">
+          <div className="flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-red-500 text-white shadow-md">
+                <Briefcase className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="font-bold tracking-tight">Vous êtes prestataire ? 🤝</h3>
+                <p className="mt-1 max-w-xl text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                  Salle, traiteur, décorateur, DJ, photographe, coiffeuse, transporteur… Publiez vos prestations,
+                  recevez des réservations de cérémonies et encaissez vos acomptes en Mobile Money.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/provider"
+              className="inline-flex shrink-0 items-center gap-2 rounded-full bg-gradient-to-r from-amber-500 to-red-500 px-6 py-3 text-sm font-bold text-white transition-all hover:shadow-lg hover:shadow-amber-500/25"
+            >
+              Ouvrir mon espace <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
 
         {/* How it works */}
         <div className="mt-20 rounded-[32px] bg-zinc-900 p-8 text-white dark:bg-white dark:text-black sm:p-12">
