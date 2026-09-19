@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { BookingProvider } from "@/lib/booking-context";
+import { ProviderSpaceProvider } from "@/lib/provider-context";
 import { Header } from "@/components/header";
 import { Smartphone } from "lucide-react";
 
@@ -19,6 +20,7 @@ export default function RootLayout({
     <html lang="fr" className="h-full antialiased">
       <body className="min-h-full flex flex-col bg-[#fcfcf9] dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans">
         <BookingProvider>
+          <ProviderSpaceProvider>
           <Header />
           <main className="flex-1">{children}</main>
           <footer className="border-t border-zinc-100 bg-white dark:border-zinc-800 dark:bg-zinc-900">
@@ -51,6 +53,7 @@ export default function RootLayout({
               </p>
             </div>
           </footer>
+          </ProviderSpaceProvider>
         </BookingProvider>
       </body>
     </html>

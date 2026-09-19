@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react"
 import { Booking, CeremonyEvent, Service } from "./types"
 
-type NewBooking = Omit<Booking, "id" | "createdAt" | "status">
+type NewBooking = Omit<Booking, "id" | "createdAt" | "status"> & { status?: Booking["status"] }
 
 type BookingContextType = {
   bookings: Booking[]
@@ -11,6 +11,7 @@ type BookingContextType = {
   mounted: boolean
   addBooking: (booking: NewBooking) => Booking
   cancelBooking: (id: string) => void
+  updateBookingStatus: (id: string, status: Booking["status"]) => void
   isSlotBooked: (date: string, time: string, serviceId: string) => boolean
   addEvent: (event: Omit<CeremonyEvent, "id" | "createdAt">) => CeremonyEvent
   getEvent: (id: string) => CeremonyEvent | undefined
@@ -51,7 +52,7 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
       ...data,
       id: Math.random().toString(36).slice(2, 9),
       createdAt: new Date().toISOString(),
-      status: "confirmed",
+      status: data.status ?? "confirmed",
     }
     setBookings((prev) => [newBooking, ...prev])
     return newBooking
@@ -59,6 +60,10 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
 
   const cancelBooking = (id: string) => {
     setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, status: "cancelled" as const } : b)))
+  }
+
+  const updateBookingStatus = (id: string, status: Booking["status"]) => {
+    setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, status } : b)))
   }
 
   const isSlotBooked = (date: string, time: string, serviceId: string) => {
@@ -93,6 +98,7 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
         mounted,
         addBooking,
         cancelBooking,
+        updateBookingStatus,
         isSlotBooked,
         addEvent,
         getEvent,

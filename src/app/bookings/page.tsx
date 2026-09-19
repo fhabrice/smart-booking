@@ -2,7 +2,8 @@
 
 import { useBookings } from "@/lib/booking-context"
 import { formatPrice, formatPriceFC, bookingReference } from "@/lib/utils"
-import { Calendar, Clock, MapPin, X, Check, Sparkles, ArrowRight, Search, Smartphone, PartyPopper, Phone } from "lucide-react"
+import { BookingStatusBadge } from "@/components/booking-status-badge"
+import { Calendar, Clock, MapPin, X, Sparkles, ArrowRight, Search, Smartphone, PartyPopper, Phone } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { format } from "date-fns"
@@ -96,10 +97,8 @@ export default function BookingsPage() {
                 >
                   <div className="relative h-40 w-full shrink-0 sm:h-auto sm:w-56">
                     <img src={booking.serviceImage} alt={booking.serviceName} className="h-full w-full object-cover" />
-                    <div className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-semibold shadow-sm backdrop-blur dark:bg-zinc-800/90">
-                      <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                        <Check className="h-3 w-3" /> Confirmé
-                      </span>
+                    <div className="absolute left-3 top-3">
+                      <BookingStatusBadge status={booking.status} className="shadow-sm" />
                     </div>
                   </div>
 

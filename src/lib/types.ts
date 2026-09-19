@@ -25,6 +25,8 @@ export interface Service {
   features: string[]
   popular?: boolean
   instant?: boolean
+  paused?: boolean // mis en pause par le prestataire (invisible côté clients)
+  custom?: boolean // prestation créée depuis l'espace prestataires
 }
 
 export type Currency = "USD" | "FC"
@@ -95,3 +97,22 @@ export type ChecklistItem = {
   category: string
   label: string
 }
+
+/** Modifications faites par un prestataire sur l'une de ses prestations (espace prestataires) */
+export interface ServiceOverride {
+  price?: number // nouveau prix USD
+  paused?: boolean // prestation en pause (masquée du catalogue client)
+  instant?: boolean // réservation instantanée activée/désactivée
+}
+
+/** Profil éditable d'un prestataire (coordonnées + retraits Mobile Money) */
+export interface ProviderProfileData {
+  phone?: string
+  whatsapp?: string
+  email?: string
+  bio?: string
+  payoutMethod?: string // "M-Pesa" | "Orange Money" | "Airtel Money"
+  payoutNumber?: string
+}
+
+export type BookingStatus = Booking["status"]

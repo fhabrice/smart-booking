@@ -11,12 +11,14 @@ export function SearchBar({
   onCityChange,
   activeCategory,
   activeCity,
+  counts,
 }: {
   onSearch: (q: string) => void
   onCategoryChange: (cat: string) => void
   onCityChange: (city: string) => void
   activeCategory: string
   activeCity: string
+  counts?: Record<string, number>
 }) {
   const [query, setQuery] = useState("")
 
@@ -80,7 +82,7 @@ export function SearchBar({
                   : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800"
               }`}
             >
-              {cat.count}
+              {counts?.[cat.id] ?? cat.count}
             </span>
           </button>
         ))}
