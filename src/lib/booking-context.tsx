@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react"
 import { Booking, CeremonyEvent, Service } from "./types"
+import { syncBookingCreation, syncBookingStatus, syncEventCreation } from "./supabase/sync"
 
 type NewBooking = Omit<Booking, "id" | "createdAt" | "status"> & { status?: Booking["status"] }
 
@@ -56,14 +57,18 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
       status: data.status ?? "confirmed",
     }
     setBookings((prev) => [newBooking, ...prev])
+    // Miroir Supabase (no-op si la base n'est pas configurée)
+    syncBookingCreation(newBooking)
     return newBooking
   }
 
   const cancelBooking = (id: string) => {
+    syncBookingStatus(id, "cancelled")
     setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, status: "cancelled" as const } : b)))
   }
 
   const updateBookingStatus = (id: string, status: Booking["status"]) => {
+    syncBookingStatus(id, status)
     setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, status } : b)))
   }
 
@@ -80,6 +85,7 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
       createdAt: new Date().toISOString(),
     }
     setEvents((prev) => [newEvent, ...prev])
+    syncEventCreation(newEvent)
     return newEvent
   }
 

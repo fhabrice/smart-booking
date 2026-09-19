@@ -34,6 +34,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   const [pinInput, setPinInput] = useState("")
   const [pinError, setPinError] = useState("")
+  const [checking, setChecking] = useState(false)
 
   // Compteurs en attente
   const pendingProvidersCount = accounts.filter((a) => a.status === "pending").length
@@ -59,16 +60,18 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   // Écran d'authentification administrateur
   if (!isAdmin) {
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
       e.preventDefault()
-      const ok = login(pinInput)
+      if (checking) return
+      setPinError("")
+      setChecking(true)
+      const ok = await login(pinInput)
+      setChecking(false)
       if (!ok) {
-        setPinError("Code administrateur incorrect. Utilisez le code par défaut ou le bouton d'accès rapide.")
+        setPinError(
+          "Code administrateur incorrect. Contactez le support Smart Booking RDC au +243 976 459 970."
+        )
       }
-    }
-
-    const handleQuickLogin = () => {
-      login("admin243")
     }
 
     return (
@@ -91,36 +94,39 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
           <form onSubmit={handleLogin} className="mt-6 space-y-4">
             <div>
-              <label className="block text-xs font-bold text-zinc-600 dark:text-zinc-400 mb-1 text-left">
+              <label
+                htmlFor="admin-code"
+                className="block text-xs font-bold text-zinc-600 dark:text-zinc-400 mb-1 text-left"
+              >
                 Code secret Administrateur
               </label>
               <input
+                id="admin-code"
+                name="admin-code"
                 type="password"
+                autoComplete="current-password"
+                required
                 value={pinInput}
                 onChange={(e) => setPinInput(e.target.value)}
-                placeholder="Entrez le code (ex : admin243)"
+                placeholder="••••••••••"
                 className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 py-3 px-4 text-center text-sm font-bold tracking-widest focus:border-amber-500 focus:bg-white focus:outline-none dark:border-zinc-700 dark:bg-zinc-800"
               />
             </div>
 
             <Button
               type="submit"
-              className="w-full bg-zinc-900 text-white hover:bg-black dark:bg-white dark:text-black font-bold"
+              disabled={checking || pinInput.trim().length === 0}
+              className="w-full bg-zinc-900 text-white hover:bg-black dark:bg-white dark:text-black font-bold disabled:opacity-60"
             >
-              Déverrouiller l&apos;administration
+              {checking ? "Vérification du code…" : "Déverrouiller l&apos;administration"}
             </Button>
           </form>
 
           <div className="mt-4 border-t border-zinc-100 pt-4 dark:border-zinc-800">
-            <Button
-              variant="outline"
-              onClick={handleQuickLogin}
-              className="w-full gap-2 border-amber-300 text-xs font-bold text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-950/40"
-            >
-              ⚡ Connexion Administrateur Démo (1-clic)
-            </Button>
-            <p className="mt-2 text-[10px] text-zinc-400">
-              Code par défaut : <code>admin243</code>
+            <p className="text-[10px] leading-relaxed text-zinc-400">
+              🔐 Accès restreint aux administrateurs autorisés de la plateforme.
+              Le code secret est communiqué hors ligne par la direction.
+              Assistance : <span className="font-semibold text-zinc-500">+243 976 459 970</span>
             </p>
           </div>
         </div>
@@ -212,7 +218,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 </Link>
 
                 <button
-                  onClick={logout}
+                  onClick={() => logout()}
                   className="flex items-center gap-2.5 rounded-2xl px-3.5 py-2 text-left text-xs font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
                 >
                   <LogOut className="h-4 w-4" /> Quitter l&apos;administration
@@ -230,7 +236,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                   <span>🛡️ Administration Smart Booking</span>
                 </div>
                 <button
-                  onClick={logout}
+                  onClick={() => logout()}
                   className="rounded-full border border-zinc-200 p-2 text-red-600 dark:border-zinc-800"
                 >
                   <LogOut className="h-4 w-4" />
