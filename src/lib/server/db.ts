@@ -28,6 +28,11 @@ type Row = Record<string, any>
 
 function fail(label: string, message?: string): never {
   console.warn(`[db] ${label}:`, message)
+  if (message && /fetch failed|ECONNREFUSED|ENOTFOUND|ETIMEDOUT|ECONNRESET|EAI_AGAIN/i.test(message)) {
+    throw new DbError(
+      "Base de données injoignable — vérifiez SUPABASE_URL et la connectivité réseau du serveur."
+    )
+  }
   throw new DbError(message || `Erreur base de données (${label})`)
 }
 
