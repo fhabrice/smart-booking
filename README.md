@@ -138,7 +138,7 @@ Kinshasa · Lubumbashi · Goma · Bukavu · Kisangani · Matadi · Mbuji-Mayi ·
 
 ```bash
 npm install
-npm run dev
+npm run dev:local      # base PostgreSQL embarquée + API REST locale + next dev
 ```
 
 Ouvrez [http://localhost:3000](http://localhost:3000) dans votre navigateur.
@@ -147,6 +147,57 @@ Ouvrez [http://localhost:3000](http://localhost:3000) dans votre navigateur.
 - **Espace Prestataires** : `/provider`
 - **Espace Super-Admin** : `/admin` — protégé par mot de passe, **sans bouton démo ni code affiché**.
   Le code est défini par la variable d'environnement `ADMIN_ACCESS_CODE` (secours : `admin243`).
+
+> `npm run dev` seul fonctionne aussi, mais **sans base de données configurée** la vitrine affiche
+> l'état vide « Base de données requise » — branchez `dev:local` (ci-dessous) ou un vrai projet
+> Supabase pour charger le catalogue.
+
+---
+
+## 🖥️ Développement local — PostgreSQL embarqué (`dev:local`)
+
+Sans compte Supabase — ou sans accès réseau à `*.supabase.co` — la plateforme tourne
+**entièrement en local** sur une vraie base PostgreSQL :
+
+```bash
+npm run dev:local
+```
+
+Cette seule commande démarre :
+
+1. un **PostgreSQL 18 embarqué** (binaire réel via [`embedded-postgres`](https://www.npmjs.com/package/embedded-postgres)),
+   données persistées dans `.pgdata/` (ignoré par Git), port `54322` ;
+2. l'installation **automatique et idempotente** de `supabase-schema.sql` puis du
+   catalogue initial réel `seed-catalog.sql` (6 prestataires + 20 prestations)
+   à la première exécution ;
+3. un **serveur REST local compatible PostgREST/Supabase**
+   ([`scripts/local-rest-server.mjs`](./scripts/local-rest-server.mjs)) sur
+   `http://127.0.0.1:54321/rest/v1` — l'API exacte que parle `@supabase/supabase-js`
+   (filtres, `or`, relations embarquées, upsert, `Prefer: return=representation`…) :
+   **le code applicatif n'est pas modifié**, il croit parler à Supabase ;
+4. `next dev` sur le port `3000` avec `SUPABASE_URL` pointant vers ce serveur.
+
+La vitrine affiche alors les **données réelles du catalogue** enregistrées en base —
+le même comportement qu'avec un projet Supabase, sans aucune donnée de démo.
+
+| Commande | Rôle |
+| --- | --- |
+| `npm run dev:local` | Tout-en-un : PostgreSQL + REST + `next dev` |
+| `npm run db:local` | PostgreSQL + REST uniquement (pour lancer `npm run dev` séparément) |
+| `npm run db:local:reset` | Supprime `.pgdata/` puis réinstalle schéma + catalogue |
+
+À savoir :
+
+- `.env.local` est préconfiguré pour ce mode (`SUPABASE_URL=http://127.0.0.1:54321`
+  et clé locale factice `local-dev-service-role-key`) ; pour repasser sur un **vrai
+  projet Supabase**, remplacez simplement les deux variables (voir `.env.example`).
+- Variables surchargeables : `LOCAL_PG_PORT` (54322), `LOCAL_REST_PORT` (54321),
+  `APP_PORT` (3000), `ADMIN_ACCESS_CODE` (admin243).
+- `npm run seed` (chargement REST du catalogue) fonctionne aussi contre la base locale :
+  `SUPABASE_URL=http://127.0.0.1:54321 SUPABASE_SERVICE_ROLE_KEY=local-dev-service-role-key npm run seed`.
+- ⚠️ Mode **développement uniquement** : la clé locale n'est pas vérifiée et les
+  serveurs n'écoutent que sur `127.0.0.1` ; n'exposez jamais ce processus sur un
+  réseau public. En production, utilisez un vrai projet Supabase (ci-dessous).
 
 ---
 
@@ -182,15 +233,19 @@ lecture publique du catalogue approuvé, écriture réservée au rôle `service_
 
 1. Créer un projet sur [supabase.com](https://supabase.com) (région de votre choix).
 2. **SQL Editor → New query** : coller le contenu de `supabase-schema.sql` puis **Run**.
-3. **Project Settings → API** : copier l'*URL* et la clé *anon*.
-4. Renseigner les variables d'environnement (voir [`.env.example`](./.env.example)) :
+3. **SQL Editor → New query** : coller le contenu de `seed-catalog.sql` puis **Run**
+   (catalogue initial réel : 6 prestataires + 20 prestations).
+4. **Project Settings → API** : copier l'*URL* du projet et la clé *service_role*.
+5. Renseigner les variables d'environnement (voir [`.env.example`](./.env.example)) :
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxxxxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...
-SUPABASE_SERVICE_ROLE_KEY=        # optionnelle, côté serveur uniquement
+SUPABASE_URL=https://xxxxxxxxxxxx.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOi...   # SECRET — côté serveur uniquement
 ADMIN_ACCESS_CODE=votre-code-secret-admin
 ```
+
+> En alternative au SQL Editor, `npm run seed` charge le catalogue initial
+> directement via l'API REST (`SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`).
 
 ### Mise à jour d'un projet existant
 
@@ -209,14 +264,17 @@ seuls les objets manquants sont créés. Requêtes de contrôle en fin de script
 
 | Fichier | Rôle |
 | --- | --- |
-| `src/lib/supabase/client.ts` | Clients Supabase : `getSupabase()` (navigateur, clé anon) et `getSupabaseAdmin()` (serveur, clé service — refuse de s'exécuter côté client) |
-| `src/lib/supabase/db.ts` | Requêtes et mappers ligne SQL ↔ types TypeScript (`rowToService`, `rowToProvider`, `rowToBooking`, `rowToMessage`, `rowToPayout`) |
-| `src/lib/supabase/sync.ts` | Miroir d'écriture **fire-and-forget** branché sur les contextes React : inscription prestataire, publication/approbation de service, réservation, devis, message, demande et paiement de retrait |
+| `src/lib/server/supabase.ts` | Client Supabase **serveur** (`getSupabaseAdmin()`, clé service_role — refuse de s'exécuter côté client) et état `isSupabaseConfigured` |
+| `src/lib/server/db.ts` | Couche d'accès aux données : requêtes et mappers ligne SQL ↔ types TypeScript (`rowToService`, `rowToProvider`, `rowToBooking`, `rowToMessage`, `rowToPayout`) |
+| `src/app/api/*` | Route Handlers serveur — **seule porte d'entrée** du navigateur vers la base (lecture + écriture) |
 
-**Principe de bascule** : `isSupabaseConfigured` vaut `false` tant que les variables sont absentes —
-toutes les fonctions de synchronisation deviennent alors des no-ops et l'application continue
-d'utiliser sa persistance `localStorage`. Aucune erreur, aucun écran blanc : la base de données
-s'active simplement en ajoutant les variables, sans réécrire l'interface.
+**Principe de bascule** : `isSupabaseConfigured` vaut `false` tant que `SUPABASE_URL` et
+`SUPABASE_SERVICE_ROLE_KEY` sont absentes — les routes `/api/*` répondent alors `503`
+avec un message explicite et l'interface affiche un état vide clair (« Base de données
+requise »). Il n'existe **plus aucune donnée de démo ni de secours** : la vitrine
+n'affiche que des données réelles enregistrées en base. La base s'active simplement
+en ajoutant les variables (vrai projet Supabase ou `npm run dev:local`), sans
+réécrire l'interface.
 
 ---
 
