@@ -30,19 +30,17 @@ const adminNav = [
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { isAdmin, login, logout, mounted } = useAdmin()
-  const { accounts, customServices, overrides, payoutRequests } = useProviderSpace()
+  const { accounts, services, payoutRequests } = useProviderSpace()
 
   const [pinInput, setPinInput] = useState("")
   const [pinError, setPinError] = useState("")
   const [checking, setChecking] = useState(false)
 
-  // Compteurs en attente
+  // Compteurs en attente (données temps réel de la base)
   const pendingProvidersCount = accounts.filter((a) => a.status === "pending").length
-  const pendingServicesCount = customServices.filter((s) => {
-    const o = overrides[s.id]
-    const status = o?.adminApprovalStatus ?? s.adminApprovalStatus ?? "pending"
-    return status === "pending"
-  }).length
+  const pendingServicesCount = services.filter(
+    (s) => !s.isDeleted && (s.adminApprovalStatus ?? "pending") === "pending"
+  ).length
   const pendingPayoutsCount = (payoutRequests || []).filter(
     (p) => p.status === "pending" || p.status === "processing"
   ).length

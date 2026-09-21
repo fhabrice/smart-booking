@@ -19,8 +19,12 @@ Basée en **RD Congo** 🇨🇩 — prix affichés en **USD + Franc Congolais (F
 - **HTML5 Canvas** — génération et export haute définition des affiches promotionnelles (PNG 1080x1080)
 - **Supabase (PostgreSQL)** — schéma complet `supabase-schema.sql` + client `@supabase/supabase-js` :
   prestataires, prestations, réservations, devis/factures, messagerie, retraits Mobile Money, journal d'activité
-- **LocalStorage** — persistance locale automatique : le site reste 100 % fonctionnel **sans** variables Supabase
-  (mode démo / hors-ligne), puis bascule sur la base dès que le projet Supabase est configuré
+- **100 % base de données** — TOUTES les données proviennent de Supabase (plus aucune donnée de démo,
+  plus aucun état métier en localStorage) :
+    - le navigateur appelle exclusivement les **Route Handlers `/api/*`** (lecture + écriture) ;
+    - seuls les identifiants de session (prestataire connecté, panier, réservations de l'appareil,
+      fils de discussion du visiteur) restent en localStorage — simples pointeurs, jamais de contenu ;
+    - la clé `service_role` reste côté serveur ; les politiques RLS bloquent toute écriture directe navigateur.
 - Images locales (`public/images/`) — autonomie et rapidité
 
 ---
@@ -39,7 +43,7 @@ Basée en **RD Congo** 🇨🇩 — prix affichés en **USD + Franc Congolais (F
   - Années d'expérience & Numéro RCCM / Id Nat (pour vérification)
   - Présentation & bio
 - **Statut d'adhésion** : nouveau compte en attente de validation administrative (visible côté admin), avec accès immédiat à son tableau de bord pour préparer ses services et affiches.
-- **Connexion** : accès rapide aux comptes enregistrés et aux comptes de démonstration.
+- **Connexion** : accès rapide aux comptes enregistrés dans la base (`providers`).
 
 ### 2. 🎨 Générateur d'Affiches Publicitaires / Flyers (`/provider/flyers`)
 - Studio interactif de création d'affiches promotionnelles pour les réseaux sociaux (WhatsApp Status, Facebook, Instagram) :
@@ -83,7 +87,7 @@ affiché à l'écran** — le code secret vient de la variable d'environnement `
   - Files d'attente prioritaires (nouveaux prestataires à valider, nouvelles publications à modérer)
   - Derniers messages échangés
 - **Gestion des prestataires (`/admin/providers`)** :
-  - Liste de tous les prestataires (démo et inscrits)
+  - Liste de tous les prestataires enregistrés en base
   - Actions : **Accepter / Valider**, **Suspendre / Enlever de la vitrine**, **Modifier** les informations, **Supprimer**, ou **Créer manuellement** un prestataire.
 - **Modération des services (`/admin/services`)** :
   - Filtrage par statut (*À valider, Approuvés, Rejetés, En pause*)

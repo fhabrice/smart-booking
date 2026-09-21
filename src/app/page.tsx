@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react"
 import { eventTypes, cities } from "@/lib/data"
-import { usePublicServices } from "@/lib/provider-context"
+import { usePublicServices, useProviderSpace } from "@/lib/provider-context"
 import { ServiceCard } from "@/components/service-card"
 import { SearchBar } from "@/components/search-bar"
 import { Sparkles, Zap, Shield, Clock, Users, TrendingUp, ArrowRight, Star, Briefcase } from "lucide-react"
@@ -14,6 +14,7 @@ export default function HomePage() {
   const [category, setCategory] = useState("all")
   const [city, setCity] = useState("all")
   const catalog = usePublicServices()
+  const { mounted, dataError } = useProviderSpace()
 
   const filtered = useMemo(() => {
     return catalog.filter((s) => {
@@ -180,7 +181,23 @@ export default function HomePage() {
           </Link>
         </div>
 
-        {filtered.length === 0 ? (
+        {!mounted ? (
+          <div className="mt-12 flex items-center justify-center gap-3 rounded-[24px] border border-zinc-200 bg-white p-12 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" />
+            Chargement des prestations depuis la base de données…
+          </div>
+        ) : dataError ? (
+          <div className="mt-12 rounded-[24px] border border-amber-300 bg-amber-50 p-12 text-center dark:border-amber-900/50 dark:bg-amber-950/20">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-950">
+              <Sparkles className="h-6 w-6 text-amber-500" />
+            </div>
+            <h3 className="mt-4 font-semibold">Base de données requise</h3>
+            <p className="mx-auto mt-2 max-w-md text-sm text-zinc-600 dark:text-zinc-400">
+              {dataError} La vitrine n&apos;affiche que des données réelles enregistrées en base —
+              configurez la connexion Supabase pour charger le catalogue.
+            </p>
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="mt-12 rounded-[24px] border border-dashed border-zinc-300 bg-white p-12 text-center dark:border-zinc-700 dark:bg-zinc-900">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
               <Sparkles className="h-6 w-6 text-zinc-400" />

@@ -4,6 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { useCart } from "@/lib/cart-context"
 import { useProviderSpace } from "@/lib/provider-context"
+import type { QuoteData } from "@/lib/types"
 import { resolvePaymentDestination } from "@/lib/commission"
 import { formatPrice, formatPriceFC } from "@/lib/utils"
 import { categoryName, paymentMethods } from "@/lib/data"
@@ -65,7 +66,10 @@ export default function CartPage() {
   const [isSuccess, setIsSuccess] = useState(false)
 
   // Document modals
-  const [quoteModal, setQuoteModal] = useState<ReturnType<typeof generateQuote> | null>(null)
+  const [quoteModal, setQuoteModal] = useState<QuoteData | null>(null)
+  const [quoteLoading, setQuoteLoading] = useState(false)
+  const [orderLoading, setOrderLoading] = useState(false)
+  const [actionError, setActionError] = useState("")
   const [showInvoice, setShowInvoice] = useState(false)
   const [invoiceNumber] = useState("FACT-2026-4821")
 
@@ -83,25 +87,41 @@ export default function CartPage() {
     })
   }
 
-  const handleOpenQuote = () => {
-    const q = generateQuote({
-      name: customerName || "Client Organisateur",
-      phone: customerPhone || "+243 8xx xxx xxx",
-      ceremonyType: ceremonyTitle || "Cérémonie & Fête",
-      city: city || "Kinshasa",
-    })
-    setQuoteModal(q)
+  const handleOpenQuote = async () => {
+    setQuoteLoading(true)
+    setActionError("")
+    try {
+      const q = await generateQuote({
+        name: customerName || "Client Organisateur",
+        phone: customerPhone || "+243 8xx xxx xxx",
+        ceremonyType: ceremonyTitle || "Cérémonie & Fête",
+        city: city || "Kinshasa",
+      })
+      setQuoteModal(q)
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Impossible d'enregistrer le devis.")
+    } finally {
+      setQuoteLoading(false)
+    }
   }
 
-  const handleConfirmOrder = () => {
+  const handleConfirmOrder = async () => {
     if (!customerName || customerPhone.length < 8) return
-    checkoutCart({
-      name: customerName,
-      phone: customerPhone,
-      paymentMethod,
-      ceremonyTitle,
-    })
-    setIsSuccess(true)
+    setOrderLoading(true)
+    setActionError("")
+    try {
+      await checkoutCart({
+        name: customerName,
+        phone: customerPhone,
+        paymentMethod,
+        ceremonyTitle,
+      })
+      setIsSuccess(true)
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "La commande a échoué. Réessayez.")
+    } finally {
+      setOrderLoading(false)
+    }
   }
 
   const handlePrint = () => {
@@ -167,7 +187,7 @@ export default function CartPage() {
 
           {itemCount > 0 && (
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleOpenQuote} className="gap-2">
+              <Button variant="outline" size="sm" onClick={() => void handleOpenQuote()} className="gap-2">
                 <FileText className="h-4 w-4 text-amber-600" /> Générer le Devis Pro-forma
               </Button>
               <Button variant="outline" size="sm" onClick={() => setShowInvoice(true)} className="gap-2">
@@ -377,10 +397,12 @@ export default function CartPage() {
 
                   <Button
                     variant="outline"
-                    onClick={handleOpenQuote}
-                    className="w-full gap-2 text-xs font-semibold"
+                    onClick={() => void handleOpenQuote()}
+                    disabled={quoteLoading}
+                    className="w-full gap-2 text-xs font-semibold disabled:opacity-60"
                   >
-                    <FileText className="h-4 w-4 text-amber-600" /> Afficher & Imprimer le Devis
+                    <FileText className="h-4 w-4 text-amber-600" />
+                    {quoteLoading ? "Enregistrement du devis…" : "Afficher & Imprimer le Devis"}
                   </Button>
 
                   <Button
@@ -519,13 +541,18 @@ export default function CartPage() {
                   Annuler
                 </Button>
                 <Button
-                  onClick={handleConfirmOrder}
-                  disabled={!customerName || customerPhone.length < 8}
-                  className="flex-1 bg-gradient-to-r from-amber-500 to-red-500 hover:from-amber-600 hover:to-red-600"
+                  onClick={() => void handleConfirmOrder()}
+                  disabled={!customerName || customerPhone.length < 8 || orderLoading}
+                  className="flex-1 bg-gradient-to-r from-amber-500 to-red-500 hover:from-amber-600 hover:to-red-600 disabled:opacity-60"
                 >
-                  Confirmer et Réserver
+                  {orderLoading ? "Enregistrement…" : "Confirmer et Réserver"}
                 </Button>
               </div>
+              {actionError && (
+                <p className="mt-3 rounded-xl bg-red-50 p-3 text-xs font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">
+                  {actionError}
+                </p>
+              )}
             </div>
           </div>
         )}

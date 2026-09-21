@@ -46,6 +46,7 @@ export default function ProviderLoginPage() {
   const [payoutMethod, setPayoutMethod] = useState("M-Pesa")
   const [payoutNumber, setPayoutNumber] = useState("")
   const [regError, setRegError] = useState("")
+  const [submitting, setSubmitting] = useState(false)
 
   // Formulaire de connexion
   const [loginSearch, setLoginSearch] = useState("")
@@ -54,7 +55,7 @@ export default function ProviderLoginPage() {
     if (mounted && session) router.replace("/provider/dashboard")
   }, [mounted, session, router])
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) return setRegError("Veuillez indiquer le nom commercial ou de votre entreprise.")
     if (!contactPerson.trim()) return setRegError("Veuillez indiquer le nom du responsable.")
@@ -62,31 +63,38 @@ export default function ProviderLoginPage() {
     if (payoutNumber.trim().length < 6)
       return setRegError("Veuillez saisir le numéro de paiement ou le compte sur lequel les clients vous paieront.")
 
-    // Vérifier si le nom existe déjà
+    // Vérifier si le nom existe déjà (contrôle aussi côté base — contrainte unique)
     const exists = accounts.some((a) => a.name.toLowerCase() === name.trim().toLowerCase())
     if (exists) {
       return setRegError("Un compte avec ce nom d'établissement existe déjà. Veuillez vous connecter.")
     }
 
-    registerProvider({
-      name: name.trim(),
-      contactPerson: contactPerson.trim(),
-      phone: phone.trim(),
-      whatsapp: whatsapp.trim() || phone.trim(),
-      email: email.trim() || `${name.toLowerCase().replace(/\s+/g, "")}@example.cd`,
-      city,
-      location: location.trim() || "Centre-ville",
-      category,
-      experience: experience.trim() || "3 ans d'expérience",
-      bio: bio.trim() || `Prestataire professionnel ${category} basé à ${city}.`,
-      rccm: rccm.trim(),
-      status: "pending",
-      verified: false,
-      payoutMethod,
-      payoutNumber: payoutNumber.trim(),
-    })
-
-    router.push("/provider/dashboard")
+    setRegError("")
+    setSubmitting(true)
+    try {
+      await registerProvider({
+        name: name.trim(),
+        contactPerson: contactPerson.trim(),
+        phone: phone.trim(),
+        whatsapp: whatsapp.trim() || phone.trim(),
+        email: email.trim() || `${name.toLowerCase().replace(/\s+/g, "")}@example.cd`,
+        city,
+        location: location.trim() || "Centre-ville",
+        category,
+        experience: experience.trim() || "3 ans d'expérience",
+        bio: bio.trim() || `Prestataire professionnel ${category} basé à ${city}.`,
+        rccm: rccm.trim(),
+        status: "pending",
+        verified: false,
+        payoutMethod,
+        payoutNumber: payoutNumber.trim(),
+      })
+      router.push("/provider/dashboard")
+    } catch (err) {
+      setRegError(err instanceof Error ? err.message : "Erreur lors de l'inscription. Réessayez.")
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleSelectLogin = (providerName: string) => {
@@ -203,7 +211,7 @@ export default function ProviderLoginPage() {
               </div>
             )}
 
-            <form onSubmit={handleRegister} className="space-y-6">
+            <form onSubmit={(e) => void handleRegister(e)} className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5">
@@ -444,9 +452,11 @@ export default function ProviderLoginPage() {
               <Button
                 type="submit"
                 size="lg"
-                className="w-full gap-2 bg-gradient-to-r from-amber-500 to-red-500 hover:from-amber-600 hover:to-red-600 font-bold"
+                disabled={submitting}
+                className="w-full gap-2 bg-gradient-to-r from-amber-500 to-red-500 hover:from-amber-600 hover:to-red-600 font-bold disabled:opacity-60"
               >
-                <Check className="h-4 w-4" /> Valider mon inscription & Accéder à mon espace
+                <Check className="h-4 w-4" />
+                {submitting ? "Inscription en cours…" : "Valider mon inscription & Accéder à mon espace"}
               </Button>
             </form>
           </div>

@@ -4,7 +4,6 @@ import { useMemo } from "react"
 import Link from "next/link"
 import { useProviderSpace, useProviderServices } from "@/lib/provider-context"
 import { useBookings } from "@/lib/booking-context"
-import { buildDemoBookings } from "@/lib/provider-demo"
 import { formatPrice, formatPriceFC } from "@/lib/utils"
 import { BookingStatusBadge } from "@/components/booking-status-badge"
 import { Button } from "@/components/ui/button"
@@ -30,7 +29,7 @@ const MONTHS_SHORT = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.",
 
 export default function ProviderDashboardPage() {
   const { session } = useProviderSpace()
-  const { bookings, addBooking, updateBookingStatus } = useBookings()
+  const { bookings, updateBookingStatus } = useBookings()
   const providerServices = useProviderServices(session ?? "")
 
   const providerName = session ?? ""
@@ -65,10 +64,6 @@ export default function ProviderDashboardPage() {
     monthlyRevenue.push({ label: MONTHS_SHORT[monthDate.getMonth()], total })
   }
   const maxRevenue = Math.max(...monthlyRevenue.map((m) => m.total), 1)
-
-  const handleSeed = () => {
-    buildDemoBookings(providerServices).forEach((b) => addBooking(b))
-  }
 
   if (!session) return null
 
@@ -211,14 +206,16 @@ export default function ProviderDashboardPage() {
           </div>
           <h3 className="mt-6 text-lg font-semibold">Aucune réservation pour l&apos;instant</h3>
           <p className="mx-auto mt-2 max-w-md text-sm text-zinc-500">
-            Vos prestations sont en ligne : les clients peuvent déjà réserver. Pour explorer l&apos;espace avec
-            des données réalistes, chargez un historique de démonstration (réservations passées, à venir et
-            demandes en attente).
+            Dès qu&apos;un client réserve l&apos;une de vos prestations sur la vitrine publique, sa demande
+            apparaît ici en temps réel — avec ses coordonnées et l&apos;acompte à encaisser.
+            Partagez vos affiches pour attirer vos premiers clients !
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <Button onClick={handleSeed} className="gap-2 bg-gradient-to-r from-amber-500 to-red-500">
-              <Sparkles className="h-4 w-4" /> Charger des réservations de démo
-            </Button>
+            <Link href="/provider/services">
+              <Button className="gap-2 bg-gradient-to-r from-amber-500 to-red-500">
+                <Sparkles className="h-4 w-4" /> Publier une prestation
+              </Button>
+            </Link>
             <Link href="/">
               <Button variant="outline" className="gap-2">
                 Voir ma vitrine publique

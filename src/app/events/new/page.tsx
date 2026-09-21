@@ -31,19 +31,22 @@ function NewEventContent() {
 
   const handleSubmit = async () => {
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 400))
-    const event = addEvent({
-      type,
-      title: title.trim() || `${selectedType?.label ?? "Cérémonie"} du ${format(new Date(date), "d MMMM", { locale: fr })}`,
-      date,
-      time,
-      city,
-      venue: venue.trim() || "Lieu à confirmer",
-      guests,
-      budget,
-      notes,
-    })
-    router.push(`/events/${event.id}`)
+    try {
+      const event = await addEvent({
+        type,
+        title: title.trim() || `${selectedType?.label ?? "Cérémonie"} du ${format(new Date(date), "d MMMM", { locale: fr })}`,
+        date,
+        time,
+        city,
+        venue: venue.trim() || "Lieu à confirmer",
+        guests,
+        budget,
+        notes,
+      })
+      router.push(`/events/${event.id}`)
+    } catch {
+      setLoading(false)
+    }
   }
 
   return (

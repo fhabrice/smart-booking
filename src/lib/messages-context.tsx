@@ -1,88 +1,51 @@
 "use client"
 
-import React, { createContext, useContext, useEffect, useState } from "react"
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react"
 import { ChatMessage } from "./types"
-import { syncMessage } from "./supabase/sync"
+import { api } from "./api"
+import { useProviderSpace } from "./provider-context"
+import { useAdmin } from "./admin-context"
 
-const MESSAGES_KEY = "sb-rdc-messages"
+/**
+ * Messagerie (client ↔ prestataire ↔ admin) — Smart Booking RDC 🇨🇩
+ * ---------------------------------------------------------------------------
+ * Tous les messages sont stockés en base (table `messages`) et chargés via
+ * /api/messages. Aucun message de démonstration n'existe dans le code.
+ *
+ * Fils de discussion :
+ *   • `admin-<Prestataire>`      → assistance prestataire ↔ admin
+ *   • `cp-<Prestataire>-<tél.>`  → conversation client ↔ prestataire
+ *
+ * Le navigateur d'un visiteur retient uniquement les identifiants de SES fils
+ * (créés depuis cet appareil) ; le contenu est toujours relu en base.
+ */
 
-const SEED_MESSAGES: ChatMessage[] = [
-  // Client <-> Prestataire (Traiteur)
-  {
-    id: "msg-1",
-    threadId: "client-traiteur-demo",
-    fromRole: "client",
-    fromName: "Sarah Lukusa",
-    toRole: "provider",
-    toName: "Saveurs du Fleuve Traiteur",
-    content: "Bonjour Chef ! Pour notre mariage de 200 personnes à Gombe, prévoyez-vous une dégustation avant la confirmation définitive du menu ?",
-    createdAt: "2026-09-18T10:15:00.000Z",
-    bookingId: "demo-book-01",
-    read: true,
-  },
-  {
-    id: "msg-2",
-    threadId: "client-traiteur-demo",
-    fromRole: "provider",
-    fromName: "Saveurs du Fleuve Traiteur",
-    toRole: "client",
-    toName: "Sarah Lukusa",
-    content: "Bonjour Mme Sarah ! Absolument, une séance de dégustation pour 4 personnes (les futurs mariés + 2 témoins) est offerte avec le pack VIP. Vous pouvez passer à notre atelier à Ma Campagne ce samedi !",
-    createdAt: "2026-09-18T10:28:00.000Z",
-    bookingId: "demo-book-01",
-    read: true,
-  },
-  // Prestataire <-> Admin (Validation et assistance)
-  {
-    id: "msg-admin-1",
-    threadId: "admin-Grand Salon Kin",
-    fromRole: "provider",
-    fromName: "Grand Salon Kin",
-    toRole: "admin",
-    toName: "Smart Booking Admin",
-    content: "Bonjour l'équipe ! Nous avons mis à jour nos tarifs pour la haute saison de décembre (passé à 650 USD avec groupe électrogène renforcé). Merci de vérifier notre fiche.",
-    createdAt: "2026-09-17T14:00:00.000Z",
-    read: true,
-  },
-  {
-    id: "msg-admin-2",
-    threadId: "admin-Grand Salon Kin",
-    fromRole: "admin",
-    fromName: "Smart Booking Admin",
-    toRole: "provider",
-    toName: "Grand Salon Kin",
-    content: "Bonjour M. Makiese ! Modification validée avec succès par notre équipe de modération. Votre fiche est à jour et certifiée. Merci pour votre réactivité !",
-    createdAt: "2026-09-17T14:30:00.000Z",
-    read: true,
-  },
-  {
-    id: "msg-admin-3",
-    threadId: "admin-Kinshasa Sound & Light VIP",
-    fromRole: "provider",
-    fromName: "Kinshasa Sound & Light VIP",
-    toRole: "admin",
-    toName: "Smart Booking Admin",
-    content: "Bonjour l'administrateur, j'ai soumis une nouvelle formule Pack DJ + Écran LED Géant. Pouvez-vous l'approuver pour la vitrine ?",
-    createdAt: "2026-09-18T09:10:00.000Z",
-    read: true,
-  },
-  {
-    id: "msg-admin-4",
-    threadId: "admin-Kinshasa Sound & Light VIP",
-    fromRole: "admin",
-    fromName: "Smart Booking Admin",
-    toRole: "provider",
-    toName: "Kinshasa Sound & Light VIP",
-    content: "Bonjour Rodrigue ! Nous avons bien reçu la formule. C'est vérifié et approuvé : elle est maintenant disponible pour tous les clients !",
-    createdAt: "2026-09-18T09:45:00.000Z",
-    read: true,
-  },
-]
+const DEVICE_THREADS_KEY = "sb-rdc-thread-ids"
+
+function readThreadIds(): string[] {
+  try {
+    const raw = localStorage.getItem(DEVICE_THREADS_KEY)
+    const parsed = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? parsed.filter((x) => typeof x === "string") : []
+  } catch {
+    return []
+  }
+}
+
+function rememberThreadId(threadId: string) {
+  try {
+    const ids = readThreadIds()
+    if (!ids.includes(threadId)) {
+      localStorage.setItem(DEVICE_THREADS_KEY, JSON.stringify([threadId, ...ids].slice(0, 50)))
+    }
+  } catch {}
+}
 
 type MessagesContextType = {
   messages: ChatMessage[]
   mounted: boolean
-  sendMessage: (data: Omit<ChatMessage, "id" | "createdAt">) => ChatMessage
+  dataError: string | null
+  sendMessage: (data: Omit<ChatMessage, "id" | "createdAt">) => Promise<ChatMessage>
   getThreadMessages: (threadId: string) => ChatMessage[]
   getProviderAdminThread: (providerName: string) => ChatMessage[]
   getClientProviderThread: (providerName: string, clientIdentifier: string) => ChatMessage[]
@@ -92,83 +55,94 @@ type MessagesContextType = {
     lastMessage: ChatMessage
     count: number
   }>
-  markThreadRead: (threadId: string) => void
+  markThreadRead: (threadId: string, asRole?: "client" | "provider" | "admin") => Promise<void>
+  reload: () => Promise<void>
 }
 
 const MessagesContext = createContext<MessagesContextType | undefined>(undefined)
 
 export function MessagesProvider({ children }: { children: React.ReactNode }) {
-  const [messages, setMessages] = useState<ChatMessage[]>(SEED_MESSAGES)
+  const { session } = useProviderSpace()
+  const { isAdmin } = useAdmin()
+  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [mounted, setMounted] = useState(false)
+  const [dataError, setDataError] = useState<string | null>(null)
+  const deviceThreads = useRef<string[]>([])
+
+  const load = useCallback(async () => {
+    const byId = new Map<string, ChatMessage>()
+    if (isAdmin) {
+      const all = await api.get<ChatMessage[]>("/api/messages?scope=admin")
+      all.forEach((m) => byId.set(m.id, m))
+    } else if (session) {
+      const own = await api.get<ChatMessage[]>(`/api/messages?provider=${encodeURIComponent(session)}`)
+      own.forEach((m) => byId.set(m.id, m))
+    }
+    if (deviceThreads.current.length > 0) {
+      const mine = await api.get<ChatMessage[]>(
+        `/api/messages?threads=${encodeURIComponent(deviceThreads.current.join(","))}`
+      )
+      mine.forEach((m) => byId.set(m.id, m))
+    }
+    setMessages(Array.from(byId.values()).sort((a, b) => a.createdAt.localeCompare(b.createdAt)))
+  }, [isAdmin, session])
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(MESSAGES_KEY)
-      if (saved) {
-        const parsed: ChatMessage[] = JSON.parse(saved)
-        // Fusionner avec SEED pour conserver les démos
-        const map = new Map<string, ChatMessage>()
-        SEED_MESSAGES.forEach((m) => map.set(m.id, m))
-        parsed.forEach((m) => map.set(m.id, m))
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setMessages(Array.from(map.values()))
+    deviceThreads.current = readThreadIds()
+    let cancelled = false
+    ;(async () => {
+      setDataError(null)
+      try {
+        await load()
+      } catch (err) {
+        if (!cancelled) {
+          setDataError(err instanceof Error ? err.message : "Erreur de chargement des messages.")
+        }
+      } finally {
+        if (!cancelled) setMounted(true)
       }
-    } catch {}
-    setMounted(true)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [load])
+
+  const sendMessage = useCallback(async (data: Omit<ChatMessage, "id" | "createdAt">): Promise<ChatMessage> => {
+    const message = await api.post<ChatMessage>("/api/messages", data)
+    setMessages((prev) => [...prev.filter((m) => m.id !== message.id), message])
+    if (message.fromRole === "client") rememberThreadId(message.threadId)
+    return message
   }, [])
 
-  useEffect(() => {
-    if (mounted) {
-      localStorage.setItem(MESSAGES_KEY, JSON.stringify(messages))
-    }
-  }, [messages, mounted])
+  const getThreadMessages = useCallback(
+    (threadId: string): ChatMessage[] => {
+      return messages
+        .filter((m) => m.threadId === threadId)
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    },
+    [messages]
+  )
 
-  const sendMessage = (data: Omit<ChatMessage, "id" | "createdAt">): ChatMessage => {
-    const newMsg: ChatMessage = {
-      ...data,
-      id: `msg-${Math.random().toString(36).slice(2, 9)}`,
-      createdAt: new Date().toISOString(),
-      read: false,
-    }
-    setMessages((prev) => [...prev, newMsg])
-    // Miroir Supabase (no-op si la base n'est pas configurée)
-    syncMessage(newMsg)
-    return newMsg
-  }
+  const getProviderAdminThread = useCallback(
+    (providerName: string): ChatMessage[] => getThreadMessages(`admin-${providerName}`),
+    [getThreadMessages]
+  )
 
-  const getThreadMessages = (threadId: string): ChatMessage[] => {
-    return messages
-      .filter((m) => m.threadId === threadId)
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-  }
+  const getClientProviderThread = useCallback(
+    (providerName: string, clientIdentifier: string): ChatMessage[] => {
+      return getThreadMessages(`cp-${providerName}-${clientIdentifier}`)
+    },
+    [getThreadMessages]
+  )
 
-  const getProviderAdminThread = (providerName: string): ChatMessage[] => {
-    const threadId = `admin-${providerName}`
-    return getThreadMessages(threadId)
-  }
-
-  const getClientProviderThread = (providerName: string, clientIdentifier: string): ChatMessage[] => {
-    const threadId = `cp-${providerName}-${clientIdentifier}`
-    const list = getThreadMessages(threadId)
-    // Fallback sur le fil de démo si vide et si le prestataire correspond
-    if (list.length === 0 && providerName.toLowerCase().includes("traiteur")) {
-      return getThreadMessages("client-traiteur-demo")
-    }
-    return list
-  }
-
-  const getAllAdminThreads = () => {
+  const getAllAdminThreads = useCallback(() => {
     const threadMap = new Map<string, { threadId: string; providerName: string; messages: ChatMessage[] }>()
 
     for (const msg of messages) {
       if (msg.threadId.startsWith("admin-")) {
         const providerName = msg.threadId.replace("admin-", "")
         if (!threadMap.has(msg.threadId)) {
-          threadMap.set(msg.threadId, {
-            threadId: msg.threadId,
-            providerName,
-            messages: [],
-          })
+          threadMap.set(msg.threadId, { threadId: msg.threadId, providerName, messages: [] })
         }
         threadMap.get(msg.threadId)!.messages.push(msg)
       }
@@ -178,32 +152,37 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
     threadMap.forEach((val) => {
       const sorted = val.messages.sort((a, b) => a.createdAt.localeCompare(b.createdAt))
       const lastMessage = sorted[sorted.length - 1]
-      result.push({
-        threadId: val.threadId,
-        providerName: val.providerName,
-        lastMessage,
-        count: sorted.length,
-      })
+      result.push({ threadId: val.threadId, providerName: val.providerName, lastMessage, count: sorted.length })
     })
 
     return result.sort((a, b) => b.lastMessage.createdAt.localeCompare(a.lastMessage.createdAt))
-  }
+  }, [messages])
 
-  const markThreadRead = (threadId: string) => {
-    setMessages((prev) => prev.map((m) => (m.threadId === threadId ? { ...m, read: true } : m)))
-  }
+  const markThreadRead = useCallback(
+    async (threadId: string, asRole?: "client" | "provider" | "admin") => {
+      await api.post("/api/messages/read", { threadId, toRole: asRole })
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.threadId === threadId && (!asRole || m.toRole === asRole) ? { ...m, read: true } : m
+        )
+      )
+    },
+    []
+  )
 
   return (
     <MessagesContext.Provider
       value={{
         messages,
         mounted,
+        dataError,
         sendMessage,
         getThreadMessages,
         getProviderAdminThread,
         getClientProviderThread,
         getAllAdminThreads,
         markThreadRead,
+        reload: load,
       }}
     >
       {children}

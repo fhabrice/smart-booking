@@ -45,6 +45,7 @@ export function BookingWidget({
   const [phone, setPhone] = useState("")
   const [payment, setPayment] = useState("mpesa")
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
   const [success, setSuccess] = useState<{ id: string; status: string } | null>(null)
 
   const timeSlots = generateTimeSlots()
@@ -66,33 +67,38 @@ export function BookingWidget({
   const handleBooking = async () => {
     if (!selectedTime || !name || phone.length < 8) return
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 900))
-    const booking = addBooking({
-      eventId: eventId || undefined,
-      serviceId: service.id,
-      serviceName: service.name,
-      serviceImage: service.image,
-      serviceCategory: service.category,
-      date: dateStr,
-      time: selectedTime,
-      duration: service.duration,
-      price: service.price,
-      deposit,
-      paymentMethod: paymentMethods.find((p) => p.id === payment)?.name ?? "M-Pesa",
-      customerName: name,
-      customerPhone: phone,
-      providerName: service.provider.name,
-      location: service.location,
-      city: service.city,
-      status: service.instant ? "confirmed" : "pending",
-      providerPayoutMethod: payoutDest.method,
-      providerPayoutNumber: payoutDest.number,
-      platformFeeUSD: depositSplit.platformFeeUSD,
-      providerNetUSD: depositSplit.providerNetUSD,
-    })
-    setLoading(false)
-    setSuccess({ id: booking.id, status: booking.status })
-    setTimeout(() => router.push("/bookings"), 2000)
+    setError("")
+    try {
+      const booking = await addBooking({
+        eventId: eventId || undefined,
+        serviceId: service.id,
+        serviceName: service.name,
+        serviceImage: service.image,
+        serviceCategory: service.category,
+        date: dateStr,
+        time: selectedTime,
+        duration: service.duration,
+        price: service.price,
+        deposit,
+        paymentMethod: paymentMethods.find((p) => p.id === payment)?.name ?? "M-Pesa",
+        customerName: name,
+        customerPhone: phone,
+        providerName: service.provider.name,
+        location: service.location,
+        city: service.city,
+        status: service.instant ? "confirmed" : "pending",
+        providerPayoutMethod: payoutDest.method,
+        providerPayoutNumber: payoutDest.number,
+        platformFeeUSD: depositSplit.platformFeeUSD,
+        providerNetUSD: depositSplit.providerNetUSD,
+      })
+      setLoading(false)
+      setSuccess({ id: booking.id, status: booking.status })
+      setTimeout(() => router.push("/bookings"), 2000)
+    } catch (err) {
+      setLoading(false)
+      setError(err instanceof Error ? err.message : "La réservation a échoué. Réessayez.")
+    }
   }
 
   if (service.paused) {
@@ -346,9 +352,15 @@ export function BookingWidget({
           </div>
         )}
 
+        {error && (
+          <div className="mt-4 rounded-xl bg-red-50 p-3 text-xs font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">
+            {error}
+          </div>
+        )}
+
         <Button
           disabled={!selectedTime || !name || phone.length < 8 || loading}
-          onClick={handleBooking}
+          onClick={() => void handleBooking()}
           className="mt-6 w-full gap-2 bg-gradient-to-r from-amber-500 to-red-500 hover:from-amber-600 hover:to-red-600"
           size="lg"
         >

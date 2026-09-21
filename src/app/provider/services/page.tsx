@@ -4,7 +4,7 @@ import { useMemo, useState } from "react"
 import Link from "next/link"
 import { useProviderSpace, useProviderServices } from "@/lib/provider-context"
 import { useBookings } from "@/lib/booking-context"
-import { categories, cities, categoryName, services as catalogServices } from "@/lib/data"
+import { categories, cities, categoryName } from "@/lib/data"
 import { formatPrice, formatPriceFC, cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -61,7 +61,7 @@ const availableImages = [
 ]
 
 export default function ProviderServicesPage() {
-  const { session, currentAccount, setOverride, addCustomService, removeCustomService } = useProviderSpace()
+  const { session, currentAccount, updateService, addService, removeService } = useProviderSpace()
   const { bookings } = useBookings()
   const providerServices = useProviderServices(session ?? "")
 
@@ -69,6 +69,7 @@ export default function ProviderServicesPage() {
   const [editingPrice, setEditingPrice] = useState<string | null>(null)
   const [priceValue, setPriceValue] = useState("")
   const [created, setCreated] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   // Formulaire nouvelle prestation
   const [name, setName] = useState("")
@@ -89,7 +90,7 @@ export default function ProviderServicesPage() {
 
   if (!session) return null
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     const trimmedName = name.trim()
     const numPrice = Number(price)
     if (!trimmedName) return setFormError("Donnez un nom à votre prestation.")
@@ -97,55 +98,61 @@ export default function ProviderServicesPage() {
     if (description.trim().length < 10) return setFormError("Ajoutez une courte description (10 caractères min).")
     if (!location.trim()) return setFormError("Indiquez votre commune ou quartier.")
 
-    const identity =
-      catalogServices.find((s) => s.provider.name === session)?.provider ?? {
-        name: session,
-        avatar: currentAccount?.avatar || "/images/avatar-1.jpg",
-        verified: currentAccount?.verified || false,
-        experience: currentAccount?.experience || "Prestataire vérifié Smart Booking",
-        rating: currentAccount?.rating || 4.9,
-      }
+    const identity = {
+      name: session,
+      avatar: currentAccount?.avatar || "/images/avatar-1.jpg",
+      verified: currentAccount?.verified || false,
+      experience: currentAccount?.experience || "Prestataire vérifié Smart Booking",
+      rating: currentAccount?.rating || 4.9,
+    }
 
-    const service = addCustomService({
-      name: trimmedName,
-      category,
-      description: description.trim(),
-      longDescription: description.trim(),
-      price: Math.round(numPrice),
-      priceUnit,
-      duration: 240,
-      rating: 5,
-      reviews: 0,
-      image,
-      images: [image],
-      provider: identity,
-      city,
-      location: location.trim(),
-      features: features
-        .split(/[,;\n]/)
-        .map((f) => f.trim())
-        .filter(Boolean)
-        .slice(0, 6),
-      instant: true,
-      custom: true,
-      adminApprovalStatus: "pending", // En attente de modération admin
-    })
-
-    setCreated(service.name)
-    setShowForm(false)
-    setName("")
-    setPrice("")
-    setDescription("")
-    setFeatures("")
-    setLocation("")
+    setSubmitting(true)
     setFormError("")
-    setTimeout(() => setCreated(null), 5000)
+    try {
+      const service = await addService({
+        name: trimmedName,
+        category,
+        description: description.trim(),
+        longDescription: description.trim(),
+        price: Math.round(numPrice),
+        priceUnit,
+        duration: 240,
+        rating: 5,
+        reviews: 0,
+        image,
+        images: [image],
+        provider: identity,
+        city,
+        location: location.trim(),
+        features: features
+          .split(/[,;\n]/)
+          .map((f) => f.trim())
+          .filter(Boolean)
+          .slice(0, 6),
+        instant: true,
+        custom: true,
+        adminApprovalStatus: "pending", // En attente de modération admin
+      })
+
+      setCreated(service.name)
+      setShowForm(false)
+      setName("")
+      setPrice("")
+      setDescription("")
+      setFeatures("")
+      setLocation("")
+      setTimeout(() => setCreated(null), 5000)
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Erreur lors de la publication.")
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const savePrice = (serviceId: string) => {
     const numPrice = Number(priceValue)
     if (numPrice && numPrice > 0) {
-      setOverride(serviceId, { price: Math.round(numPrice) })
+      void updateService(serviceId, { price: Math.round(numPrice) }).catch(() => {})
     }
     setEditingPrice(null)
   }
@@ -346,10 +353,11 @@ export default function ProviderServicesPage() {
             </Button>
             <Button
               size="sm"
-              onClick={handleCreate}
-              className="bg-gradient-to-r from-amber-500 to-red-500 hover:from-amber-600 hover:to-red-600 font-bold"
+              onClick={() => void handleCreate()}
+              disabled={submitting}
+              className="bg-gradient-to-r from-amber-500 to-red-500 hover:from-amber-600 hover:to-red-600 font-bold disabled:opacity-60"
             >
-              Soumettre à la modération admin
+              {submitting ? "Publication en cours…" : "Soumettre à la modération admin"}
             </Button>
           </div>
         </div>
@@ -469,7 +477,7 @@ export default function ProviderServicesPage() {
                         size="sm"
                         variant="outline"
                         className="h-8 gap-1 text-xs"
-                        onClick={() => setOverride(service.id, { paused: !service.paused })}
+                        onClick={() => void updateService(service.id, { paused: !service.paused }).catch(() => {})}
                       >
                         {service.paused ? (
                           <>
@@ -486,7 +494,7 @@ export default function ProviderServicesPage() {
                         size="sm"
                         variant="outline"
                         className="h-8 gap-1 text-xs"
-                        onClick={() => setOverride(service.id, { instant: !service.instant })}
+                        onClick={() => void updateService(service.id, { instant: !service.instant }).catch(() => {})}
                       >
                         <Zap className={cn("h-3 w-3", service.instant ? "text-amber-500" : "text-zinc-400")} />
                         {service.instant ? "Instantanée ON" : "Instantanée OFF"}
@@ -505,7 +513,7 @@ export default function ProviderServicesPage() {
                           size="sm"
                           variant="ghost"
                           className="h-8 gap-1 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
-                          onClick={() => removeCustomService(service.id)}
+                          onClick={() => void removeService(service.id).catch(() => {})}
                         >
                           <Trash2 className="h-3 w-3" /> Supprimer
                         </Button>
