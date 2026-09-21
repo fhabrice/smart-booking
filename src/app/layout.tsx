@@ -23,11 +23,11 @@ export default function RootLayout({
   return (
     <html lang="fr" className="h-full antialiased">
       <body className="min-h-full flex flex-col bg-[#fcfcf9] dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans">
-        <BookingProvider>
+        <AdminProvider>
           <ProviderSpaceProvider>
-            <CartProvider>
-              <MessagesProvider>
-                <AdminProvider>
+            <BookingProvider>
+              <CartProvider>
+                <MessagesProvider>
                   <Header />
                   <main className="flex-1">{children}</main>
                   <footer className="border-t border-zinc-100 bg-white dark:border-zinc-800 dark:bg-zinc-900">
@@ -60,11 +60,11 @@ export default function RootLayout({
                       </p>
                     </div>
                   </footer>
-                </AdminProvider>
-              </MessagesProvider>
-            </CartProvider>
+                </MessagesProvider>
+              </CartProvider>
+            </BookingProvider>
           </ProviderSpaceProvider>
-        </BookingProvider>
+        </AdminProvider>
       </body>
     </html>
   );

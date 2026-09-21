@@ -18,35 +18,28 @@ export default function ProviderSupportPage() {
   const [messageText, setMessageText] = useState("")
   const [fastNotice, setFastNotice] = useState(false)
 
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!messageText.trim()) return
-
-    sendMessage({
+  const sendToAdmin = async (content: string) => {
+    await sendMessage({
       threadId: `admin-${providerName}`,
       fromRole: "provider",
       fromName: providerName,
       toRole: "admin",
       toName: "Smart Booking Admin",
-      content: messageText.trim(),
+      content,
     })
-
     setMessageText("")
     setFastNotice(true)
     setTimeout(() => setFastNotice(false), 4000)
   }
 
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!messageText.trim()) return
+    await sendToAdmin(messageText.trim()).catch(() => {})
+  }
+
   const handleQuickRequest = (topic: string) => {
-    sendMessage({
-      threadId: `admin-${providerName}`,
-      fromRole: "provider",
-      fromName: providerName,
-      toRole: "admin",
-      toName: "Smart Booking Admin",
-      content: topic,
-    })
-    setFastNotice(true)
-    setTimeout(() => setFastNotice(false), 4000)
+    void sendToAdmin(topic).catch(() => {})
   }
 
   if (!session) return null
@@ -129,7 +122,7 @@ export default function ProviderSupportPage() {
               </div>
             )}
 
-            <form onSubmit={handleSendMessage} className="flex gap-2">
+            <form onSubmit={(e) => void handleSendMessage(e)} className="flex gap-2">
               <input
                 value={messageText}
                 onChange={(e) => setMessageText(e.target.value)}

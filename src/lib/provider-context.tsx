@@ -1,213 +1,82 @@
 "use client"
 
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react"
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 import {
   PayoutRequest,
   ProviderAccount,
   ProviderProfileData,
   ProviderStatus,
   Service,
-  ServiceOverride,
 } from "./types"
-import { services as catalogServices } from "./data"
-import {
-  syncPayoutProcessed,
-  syncPayoutRequest,
-  syncProviderRegistration,
-  syncProviderStatus,
-  syncServiceApproval,
-  syncServiceCreation,
-} from "./supabase/sync"
+import { api } from "./api"
+import { useAdmin } from "./admin-context"
+
+/**
+ * Espace prestataire — Smart Booking RDC 🇨🇩
+ * ---------------------------------------------------------------------------
+ * SOURCE DE VÉRITÉ UNIQUE : la base de données Supabase, atteinte via les
+ * routes /api/* (clé service_role conservée côté serveur).
+ *
+ *   • Aucune donnée de démo, aucun compte pré-chargé, aucune persistance
+ *     métier en localStorage — seul le NOM du prestataire connecté est gardé
+ *     sur l'appareil (simple session de confort).
+ *   • `services` contient le catalogue public approuvé, enrichi des
+ *     prestations du prestataire connecté (tous statuts) — ou de TOUTES les
+ *     prestations quand l'administrateur est connecté.
+ *   • Chaque action est enregistrée en base AVANT mise à jour de l'état
+ *     local ; en cas d'erreur, une exception est levée (à afficher dans l'UI).
+ */
 
 const SESSION_KEY = "sb-rdc-provider-session"
-const OVERRIDES_KEY = "sb-rdc-provider-overrides"
-const CUSTOM_SERVICES_KEY = "sb-rdc-custom-services"
-const PROVIDER_PROFILES_KEY = "sb-rdc-provider-profiles"
-const PROVIDER_ACCOUNTS_KEY = "sb-rdc-provider-accounts"
-const PROVIDER_PAYOUTS_KEY = "sb-rdc-provider-payouts"
 
-export const INITIAL_ACCOUNTS: ProviderAccount[] = [
-  {
-    id: "prov-grand-salon",
-    name: "Grand Salon Kin",
-    contactPerson: "Dieudonné Makiese",
-    phone: "+243 821 110 021",
-    whatsapp: "+243 821 110 021",
-    email: "contact@grandsalonkin.cd",
-    city: "Kinshasa",
-    location: "Gombe · Av. du 24 novembre",
-    category: "salles",
-    experience: "15 ans d'expérience",
-    bio: "Salle de prestige de 300 places climatisée avec parking sécurisé au cœur de la Gombe.",
-    rccm: "CD/KIN/RCCM/18-B-0429",
-    status: "approved",
-    rating: 4.9,
-    reviewsCount: 148,
-    verified: true,
-    avatar: "/images/avatar-1.jpg",
-    registeredAt: "2025-01-10T10:00:00.000Z",
-    payoutMethod: "M-Pesa",
-    payoutNumber: "+243 821 110 021",
-  },
-  {
-    id: "prov-palais-katanga",
-    name: "Palais du Katanga",
-    contactPerson: "Chantal Tshilombo",
-    phone: "+243 998 770 032",
-    whatsapp: "+243 998 770 032",
-    email: "reservation@palaiskatanga.cd",
-    city: "Lubumbashi",
-    location: "Golf Météo · Av. des Baobabs",
-    category: "salles",
-    experience: "10 ans d'expérience",
-    bio: "Complexe événementiel d'exception de 500 places à Lubumbashi.",
-    rccm: "CD/LSH/RCCM/19-A-1102",
-    status: "approved",
-    rating: 4.8,
-    reviewsCount: 96,
-    verified: true,
-    avatar: "/images/avatar-2.jpg",
-    registeredAt: "2025-02-14T08:30:00.000Z",
-    payoutMethod: "Orange Money",
-    payoutNumber: "+243 998 770 032",
-  },
-  {
-    id: "prov-kivu-lake",
-    name: "Kivu Lake View Gardens",
-    contactPerson: "Jacques Safari",
-    phone: "+243 971 445 566",
-    whatsapp: "+243 971 445 566",
-    email: "contact@kivugardens.cd",
-    city: "Goma",
-    location: "Himbi · Bord du Lac Kivu",
-    category: "salles",
-    experience: "8 ans d'expérience",
-    bio: "Jardins et chapiteau panoramique les pieds dans l'eau pour cérémonies inoubliables.",
-    rccm: "CD/GOM/RCCM/21-B-0834",
-    status: "approved",
-    rating: 4.9,
-    reviewsCount: 112,
-    verified: true,
-    avatar: "/images/avatar-3.jpg",
-    registeredAt: "2025-03-01T12:00:00.000Z",
-    payoutMethod: "Airtel Money",
-    payoutNumber: "+243 971 445 566",
-  },
-  {
-    id: "prov-saveurs-kin",
-    name: "Saveurs du Fleuve Traiteur",
-    contactPerson: "Chef Aimé Bamporiki",
-    phone: "+243 810 990 044",
-    whatsapp: "+243 810 990 044",
-    email: "traiteur@saveursdufleuve.cd",
-    city: "Kinshasa",
-    location: "Ngaliema · Ma Campagne",
-    category: "traiteur",
-    experience: "12 ans d'expérience",
-    bio: "Haute gastronomie congolaise et buffet international pour mariages et réceptions VIP.",
-    status: "approved",
-    rating: 4.9,
-    reviewsCount: 204,
-    verified: true,
-    avatar: "/images/avatar-4.jpg",
-    registeredAt: "2025-01-20T14:15:00.000Z",
-    payoutMethod: "M-Pesa",
-    payoutNumber: "+243 810 990 044",
-  },
-  {
-    id: "prov-lumumba-events",
-    name: "Lumumba Événements Déco",
-    contactPerson: "Nathalie Kalonji",
-    phone: "+243 854 321 009",
-    whatsapp: "+243 854 321 009",
-    email: "deco@lumumbaevents.cd",
-    city: "Kinshasa",
-    location: "Limete · 7e Rue Résidentiel",
-    category: "decoration",
-    experience: "9 ans d'expérience",
-    bio: "Créations florales d'exception, trônes de mariés et scénographie lumineuse moderne.",
-    status: "approved",
-    rating: 5.0,
-    reviewsCount: 88,
-    verified: true,
-    avatar: "/images/avatar-5.jpg",
-    registeredAt: "2025-02-05T09:00:00.000Z",
-    payoutMethod: "Orange Money",
-    payoutNumber: "+243 854 321 009",
-  },
-  {
-    id: "prov-sound-kin",
-    name: "Kinshasa Sound & Light VIP",
-    contactPerson: "DJ Rodrigue",
-    phone: "+243 900 234 567",
-    whatsapp: "+243 900 234 567",
-    email: "booking@kinsoundvip.cd",
-    city: "Kinshasa",
-    location: "Kalamu · Victoire",
-    category: "sono",
-    experience: "11 ans d'expérience",
-    bio: "Système line array 10 000 Watts, projecteurs robotisés, fumée lourde et DJ animateur polyglotte.",
-    status: "approved",
-    rating: 4.9,
-    reviewsCount: 167,
-    verified: true,
-    avatar: "/images/avatar-6.jpg",
-    registeredAt: "2025-01-28T16:45:00.000Z",
-    payoutMethod: "Airtel Money",
-    payoutNumber: "+243 900 234 567",
-  },
-]
-
-export const INITIAL_PAYOUTS: PayoutRequest[] = [
-  {
-    id: "payout-01",
-    providerName: "Grand Salon Kin",
-    amountUSD: 300,
-    amountFC: 855000,
-    method: "M-Pesa",
-    phoneNumber: "+243 821 110 021",
-    status: "paid",
-    requestedAt: "2026-09-15T10:00:00.000Z",
-    processedAt: "2026-09-15T14:30:00.000Z",
-    transactionRef: "MPESA-992384-KIN",
-    notes: "Acomptes réservations mariage week-end",
-  },
-  {
-    id: "payout-02",
-    providerName: "Saveurs du Fleuve Traiteur",
-    amountUSD: 450,
-    amountFC: 1282500,
-    method: "Orange Money",
-    phoneNumber: "+243 854 321 009",
-    status: "pending",
-    requestedAt: "2026-09-18T16:20:00.000Z",
-    notes: "Retrait acomptes buffet VIP",
-  },
-]
+export type ServicePatchInput = Partial<{
+  name: string
+  category: string
+  description: string
+  longDescription: string
+  price: number
+  priceUnit: string
+  duration: number
+  image: string
+  images: string[]
+  city: string
+  location: string
+  features: string[]
+  popular: boolean
+  instant: boolean
+  paused: boolean
+  adminApprovalStatus: "pending" | "approved" | "rejected"
+  adminFeedback: string | null
+  isDeleted: boolean
+}>
 
 type ProviderSpaceContextType = {
+  /** true une fois le premier chargement base de données terminé (succès ou échec). */
   mounted: boolean
+  /** Message d'erreur si la base est inaccessible / non configurée. */
+  dataError: string | null
   session: string | null
   currentAccount: ProviderAccount | null
   login: (providerName: string) => void
   logout: () => void
   accounts: ProviderAccount[]
-  registerProvider: (data: Omit<ProviderAccount, "id" | "registeredAt" | "rating" | "reviewsCount" | "avatar">) => ProviderAccount
-  updateAccountStatus: (providerName: string, status: ProviderStatus, adminNotes?: string) => void
-  updateAccount: (providerName: string, patch: Partial<ProviderAccount>) => void
-  deleteAccount: (providerName: string) => void
-  overrides: Record<string, ServiceOverride>
-  setOverride: (serviceId: string, patch: Partial<ServiceOverride>) => void
-  customServices: Service[]
-  addCustomService: (service: Omit<Service, "id">) => Service
-  removeCustomService: (id: string) => void
-  profiles: Record<string, ProviderProfileData>
-  updateProfile: (providerName: string, patch: Partial<ProviderProfileData>) => void
-  // Administration des services
-  approveService: (serviceId: string) => void
-  rejectService: (serviceId: string, feedback: string) => void
-  updateServiceAdmin: (serviceId: string, patch: Partial<ServiceOverride>) => void
-  deleteService: (serviceId: string) => void
+  registerProvider: (
+    data: Omit<ProviderAccount, "id" | "registeredAt" | "rating" | "reviewsCount" | "avatar">
+  ) => Promise<ProviderAccount>
+  updateAccountStatus: (providerName: string, status: ProviderStatus, adminNotes?: string) => Promise<void>
+  updateAccount: (providerName: string, patch: Partial<ProviderAccount>) => Promise<void>
+  deleteAccount: (providerName: string) => Promise<void>
+  // Prestations (100 % base de données)
+  services: Service[]
+  addService: (service: Omit<Service, "id">) => Promise<Service>
+  updateService: (serviceId: string, patch: ServicePatchInput) => Promise<void>
+  removeService: (id: string) => Promise<void>
+  approveService: (serviceId: string) => Promise<void>
+  rejectService: (serviceId: string, feedback: string) => Promise<void>
+  updateServiceAdmin: (serviceId: string, patch: ServicePatchInput) => Promise<void>
+  deleteService: (serviceId: string) => Promise<void>
+  // Profil prestataire (champs stockés sur le compte)
+  updateProfile: (providerName: string, patch: Partial<ProviderProfileData>) => Promise<void>
   // Retraits Mobile Money
   payoutRequests: PayoutRequest[]
   requestPayout: (data: {
@@ -216,285 +85,305 @@ type ProviderSpaceContextType = {
     method: "M-Pesa" | "Orange Money" | "Airtel Money"
     phoneNumber: string
     notes?: string
-  }) => PayoutRequest
-  processPayout: (payoutId: string, transactionRef: string) => void
-  rejectPayout: (payoutId: string, notes?: string) => void
+  }) => Promise<PayoutRequest>
+  processPayout: (payoutId: string, transactionRef: string) => Promise<void>
+  rejectPayout: (payoutId: string, notes?: string) => Promise<void>
+  /** Recharge toutes les données depuis la base. */
+  reload: () => Promise<void>
 }
 
 const ProviderSpaceContext = createContext<ProviderSpaceContextType | undefined>(undefined)
 
-export function applyOverride(service: Service, override?: ServiceOverride): Service {
-  if (!override) {
-    return {
-      ...service,
-      adminApprovalStatus: service.custom ? (service.adminApprovalStatus ?? "pending") : "approved",
-    }
-  }
-  return {
-    ...service,
-    name: override.name ?? service.name,
-    category: override.category ?? service.category,
-    city: override.city ?? service.city,
-    location: override.location ?? service.location,
-    description: override.description ?? service.description,
-    price: override.price ?? service.price,
-    instant: override.instant ?? service.instant,
-    paused: override.paused ?? service.paused,
-    adminApprovalStatus: override.adminApprovalStatus ?? (service.custom ? (service.adminApprovalStatus ?? "pending") : "approved"),
-    adminFeedback: override.adminFeedback ?? service.adminFeedback,
-    isDeleted: override.isDeleted ?? service.isDeleted,
-  }
-}
-
 export function ProviderSpaceProvider({ children }: { children: React.ReactNode }) {
+  const { isAdmin } = useAdmin()
   const [session, setSession] = useState<string | null>(null)
-  const [accounts, setAccounts] = useState<ProviderAccount[]>(INITIAL_ACCOUNTS)
-  const [overrides, setOverrides] = useState<Record<string, ServiceOverride>>({})
-  const [customServices, setCustomServices] = useState<Service[]>([])
-  const [profiles, setProfiles] = useState<Record<string, ProviderProfileData>>({})
-  const [payoutRequests, setPayoutRequests] = useState<PayoutRequest[]>(INITIAL_PAYOUTS)
+  const [accounts, setAccounts] = useState<ProviderAccount[]>([])
+  const [services, setServices] = useState<Service[]>([])
+  const [payoutRequests, setPayoutRequests] = useState<PayoutRequest[]>([])
   const [mounted, setMounted] = useState(false)
+  const [dataError, setDataError] = useState<string | null>(null)
+  const sessionRestored = useRef(false)
 
+  // Session prestataire de l'appareil (confort — pas une donnée métier)
   useEffect(() => {
     try {
-      const savedSession = localStorage.getItem(SESSION_KEY)
+      const saved = localStorage.getItem(SESSION_KEY)
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (savedSession) setSession(savedSession)
-      const savedAccounts = localStorage.getItem(PROVIDER_ACCOUNTS_KEY)
-      if (savedAccounts) {
-        const parsed: ProviderAccount[] = JSON.parse(savedAccounts)
-        const merged = [...INITIAL_ACCOUNTS]
-        for (const p of parsed) {
-          const idx = merged.findIndex((m) => m.name.toLowerCase() === p.name.toLowerCase())
-          if (idx >= 0) merged[idx] = p
-          else merged.push(p)
-        }
-        setAccounts(merged)
-      }
-      const savedOverrides = localStorage.getItem(OVERRIDES_KEY)
-      if (savedOverrides) setOverrides(JSON.parse(savedOverrides))
-      const savedCustom = localStorage.getItem(CUSTOM_SERVICES_KEY)
-      if (savedCustom) setCustomServices(JSON.parse(savedCustom))
-      const savedProfiles = localStorage.getItem(PROVIDER_PROFILES_KEY)
-      if (savedProfiles) setProfiles(JSON.parse(savedProfiles))
-      const savedPayouts = localStorage.getItem(PROVIDER_PAYOUTS_KEY)
-      if (savedPayouts) {
-        setPayoutRequests(JSON.parse(savedPayouts))
-      }
+      if (saved) setSession(saved)
     } catch {}
-    setMounted(true)
+    sessionRestored.current = true
   }, [])
 
   useEffect(() => {
-    if (mounted) {
+    if (!sessionRestored.current) return
+    try {
       if (session) localStorage.setItem(SESSION_KEY, session)
       else localStorage.removeItem(SESSION_KEY)
+    } catch {}
+  }, [session])
+
+  const loadAccounts = useCallback(async () => {
+    setAccounts(await api.get<ProviderAccount[]>("/api/providers"))
+  }, [])
+
+  const loadServices = useCallback(async () => {
+    if (isAdmin) {
+      setServices(await api.get<Service[]>("/api/services?scope=all"))
+      return
     }
-  }, [session, mounted])
+    const publicServices = await api.get<Service[]>("/api/services")
+    let own: Service[] = []
+    if (session) {
+      own = await api.get<Service[]>(`/api/services?provider=${encodeURIComponent(session)}`)
+    }
+    const map = new Map<string, Service>()
+    for (const s of own) map.set(s.id, s)
+    for (const s of publicServices) map.set(s.id, s)
+    setServices(Array.from(map.values()))
+  }, [isAdmin, session])
 
+  const loadPayouts = useCallback(async () => {
+    if (isAdmin) {
+      setPayoutRequests(await api.get<PayoutRequest[]>("/api/payouts?scope=all"))
+    } else if (session) {
+      setPayoutRequests(await api.get<PayoutRequest[]>(`/api/payouts?provider=${encodeURIComponent(session)}`))
+    } else {
+      setPayoutRequests([])
+    }
+  }, [isAdmin, session])
+
+  const reload = useCallback(async () => {
+    setDataError(null)
+    try {
+      await Promise.all([loadAccounts(), loadServices(), loadPayouts()])
+    } catch (err) {
+      setDataError(err instanceof Error ? err.message : "Erreur de chargement des données.")
+    }
+  }, [loadAccounts, loadServices, loadPayouts])
+
+  // Chargement initial + rechargement à chaque changement de périmètre
+  // (connexion prestataire / admin).
   useEffect(() => {
-    if (mounted) localStorage.setItem(PROVIDER_ACCOUNTS_KEY, JSON.stringify(accounts))
-  }, [accounts, mounted])
+    let cancelled = false
+    ;(async () => {
+      setDataError(null)
+      try {
+        await Promise.all([loadAccounts(), loadServices(), loadPayouts()])
+      } catch (err) {
+        if (!cancelled) {
+          setDataError(err instanceof Error ? err.message : "Erreur de chargement des données.")
+        }
+      } finally {
+        if (!cancelled) setMounted(true)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [loadAccounts, loadServices, loadPayouts])
 
-  useEffect(() => {
-    if (mounted) localStorage.setItem(OVERRIDES_KEY, JSON.stringify(overrides))
-  }, [overrides, mounted])
-
-  useEffect(() => {
-    if (mounted) localStorage.setItem(CUSTOM_SERVICES_KEY, JSON.stringify(customServices))
-  }, [customServices, mounted])
-
-  useEffect(() => {
-    if (mounted) localStorage.setItem(PROVIDER_PROFILES_KEY, JSON.stringify(profiles))
-  }, [profiles, mounted])
-
-  useEffect(() => {
-    if (mounted) localStorage.setItem(PROVIDER_PAYOUTS_KEY, JSON.stringify(payoutRequests))
-  }, [payoutRequests, mounted])
-
-  const login = (providerName: string) => {
-    setSession(providerName)
-  }
-
-  const logout = () => {
-    setSession(null)
-  }
+  const login = useCallback((providerName: string) => setSession(providerName), [])
+  const logout = useCallback(() => setSession(null), [])
 
   const currentAccount = useMemo(() => {
     if (!session) return null
     return accounts.find((a) => a.name.toLowerCase() === session.toLowerCase()) ?? null
   }, [session, accounts])
 
-  const registerProvider = (
-    data: Omit<ProviderAccount, "id" | "registeredAt" | "rating" | "reviewsCount" | "avatar">
-  ): ProviderAccount => {
-    const avatarIndex = (accounts.length % 6) + 1
-    const newAccount: ProviderAccount = {
-      ...data,
-      id: `prov-${Math.random().toString(36).slice(2, 9)}`,
-      status: "pending",
-      rating: 5.0,
-      reviewsCount: 0,
-      avatar: `/images/avatar-${avatarIndex}.jpg`,
-      registeredAt: new Date().toISOString(),
-    }
-    setAccounts((prev) => [newAccount, ...prev])
-    setSession(newAccount.name)
-    // Miroir Supabase (no-op si la base n'est pas configurée)
-    syncProviderRegistration({ ...data, avatar: newAccount.avatar })
-    return newAccount
-  }
+  // -------------------------------------------------------------------------
+  // Comptes prestataires
+  // -------------------------------------------------------------------------
 
-  const updateAccountStatus = (providerName: string, status: ProviderStatus, adminNotes?: string) => {
-    const target = accounts.find((a) => a.name.toLowerCase() === providerName.toLowerCase())
-    if (target) syncProviderStatus(target.id, status, adminNotes)
-    setAccounts((prev) =>
-      prev.map((a) =>
-        a.name.toLowerCase() === providerName.toLowerCase()
-          ? {
-              ...a,
-              status,
-              verified: status === "approved" ? true : a.verified,
-              adminNotes: adminNotes ?? a.adminNotes,
-            }
-          : a
+  const registerProvider = useCallback(
+    async (
+      data: Omit<ProviderAccount, "id" | "registeredAt" | "rating" | "reviewsCount" | "avatar">
+    ): Promise<ProviderAccount> => {
+      const avatarIndex = (accounts.length % 6) + 1
+      const account = await api.post<ProviderAccount>("/api/providers", {
+        ...data,
+        avatar: `/images/avatar-${avatarIndex}.jpg`,
+      })
+      setAccounts((prev) => [account, ...prev])
+      setSession(account.name)
+      return account
+    },
+    [accounts.length]
+  )
+
+  const updateAccountStatus = useCallback(
+    async (providerName: string, status: ProviderStatus, adminNotes?: string) => {
+      const target = accounts.find((a) => a.name.toLowerCase() === providerName.toLowerCase())
+      if (!target) throw new Error(`Compte introuvable : ${providerName}`)
+      const updated = await api.patch<ProviderAccount>(`/api/providers/${target.id}`, {
+        status,
+        adminNotes: adminNotes ?? null,
+      })
+      setAccounts((prev) => prev.map((a) => (a.id === updated.id ? updated : a)))
+    },
+    [accounts]
+  )
+
+  const updateAccount = useCallback(
+    async (providerName: string, patch: Partial<ProviderAccount>) => {
+      const target = accounts.find((a) => a.name.toLowerCase() === providerName.toLowerCase())
+      if (!target) throw new Error(`Compte introuvable : ${providerName}`)
+      const updated = await api.patch<ProviderAccount>(`/api/providers/${target.id}`, patch)
+      setAccounts((prev) => prev.map((a) => (a.id === updated.id ? updated : a)))
+    },
+    [accounts]
+  )
+
+  const deleteAccount = useCallback(
+    async (providerName: string) => {
+      const target = accounts.find((a) => a.name.toLowerCase() === providerName.toLowerCase())
+      if (!target) return
+      const res = await fetch(`/api/providers/${target.id}`, { method: "DELETE", credentials: "same-origin" })
+      const json = await res.json().catch(() => null)
+      if (!res.ok || !json?.ok) throw new Error(json?.error ?? "Erreur lors de la suppression du compte.")
+      setAccounts((prev) => prev.filter((a) => a.id !== target.id))
+      setServices((prev) =>
+        prev.filter((s) => s.provider.name.toLowerCase() !== providerName.toLowerCase())
       )
+      setPayoutRequests((prev) =>
+        prev.filter((p) => p.providerName.toLowerCase() !== providerName.toLowerCase())
+      )
+      if (session?.toLowerCase() === providerName.toLowerCase()) setSession(null)
+    },
+    [accounts, session]
+  )
+
+  // -------------------------------------------------------------------------
+  // Prestations
+  // -------------------------------------------------------------------------
+
+  const addService = useCallback(
+    async (data: Omit<Service, "id">): Promise<Service> => {
+      const service = await api.post<Service>("/api/services", {
+        ...data,
+        providerId: currentAccount?.id ?? undefined,
+      })
+      setServices((prev) => [service, ...prev.filter((s) => s.id !== service.id)])
+      return service
+    },
+    [currentAccount?.id]
+  )
+
+  const applyLocalServicePatch = useCallback((serviceId: string, patch: ServicePatchInput) => {
+    setServices((prev) =>
+      prev.map((s) => {
+        if (s.id !== serviceId) return s
+        return {
+          ...s,
+          ...patch,
+          adminFeedback:
+            patch.adminFeedback === null
+              ? undefined
+              : (patch.adminFeedback ?? s.adminFeedback),
+        }
+      })
     )
-  }
+  }, [])
 
-  const updateAccount = (providerName: string, patch: Partial<ProviderAccount>) => {
-    setAccounts((prev) =>
-      prev.map((a) => (a.name.toLowerCase() === providerName.toLowerCase() ? { ...a, ...patch } : a))
-    )
-  }
+  const updateService = useCallback(
+    async (serviceId: string, patch: ServicePatchInput) => {
+      await api.patch<Service>(`/api/services/${serviceId}`, patch)
+      applyLocalServicePatch(serviceId, patch)
+    },
+    [applyLocalServicePatch]
+  )
 
-  const deleteAccount = (providerName: string) => {
-    setAccounts((prev) => prev.filter((a) => a.name.toLowerCase() !== providerName.toLowerCase()))
-    if (session?.toLowerCase() === providerName.toLowerCase()) {
-      setSession(null)
-    }
-  }
+  const removeService = useCallback(async (id: string) => {
+    const res = await fetch(`/api/services/${id}`, { method: "DELETE", credentials: "same-origin" })
+    const json = await res.json().catch(() => null)
+    if (!res.ok || !json?.ok) throw new Error(json?.error ?? "Erreur lors de la suppression.")
+    setServices((prev) => prev.filter((s) => s.id !== id))
+  }, [])
 
-  const setOverride = (serviceId: string, patch: Partial<ServiceOverride>) => {
-    setOverrides((prev) => ({ ...prev, [serviceId]: { ...prev[serviceId], ...patch } }))
-  }
+  const approveService = useCallback(
+    async (serviceId: string) => {
+      await api.patch<Service>(`/api/services/${serviceId}`, {
+        adminApprovalStatus: "approved",
+        adminFeedback: null,
+      })
+      applyLocalServicePatch(serviceId, { adminApprovalStatus: "approved", adminFeedback: null })
+    },
+    [applyLocalServicePatch]
+  )
 
-  const addCustomService = (data: Omit<Service, "id">) => {
-    const newService: Service = {
-      ...data,
-      id: `custom-${Math.random().toString(36).slice(2, 9)}`,
-      custom: true,
-      adminApprovalStatus: "pending",
-    }
-    setCustomServices((prev) => [newService, ...prev])
-    // Miroir Supabase : prestation en attente de validation admin
-    syncServiceCreation(newService)
-    return newService
-  }
+  const rejectService = useCallback(
+    async (serviceId: string, feedback: string) => {
+      await api.patch<Service>(`/api/services/${serviceId}`, {
+        adminApprovalStatus: "rejected",
+        adminFeedback: feedback,
+      })
+      applyLocalServicePatch(serviceId, { adminApprovalStatus: "rejected", adminFeedback: feedback })
+    },
+    [applyLocalServicePatch]
+  )
 
-  const removeCustomService = (id: string) => {
-    setCustomServices((prev) => prev.filter((s) => s.id !== id))
-    setOverrides((prev) => {
-      const next = { ...prev }
-      delete next[id]
-      return next
+  const updateServiceAdmin = useCallback(
+    async (serviceId: string, patch: ServicePatchInput) => {
+      await api.patch<Service>(`/api/services/${serviceId}`, patch)
+      applyLocalServicePatch(serviceId, patch)
+    },
+    [applyLocalServicePatch]
+  )
+
+  const deleteService = useCallback(
+    async (serviceId: string) => {
+      await api.patch<Service>(`/api/services/${serviceId}`, { isDeleted: true })
+      applyLocalServicePatch(serviceId, { isDeleted: true })
+    },
+    [applyLocalServicePatch]
+  )
+
+  // -------------------------------------------------------------------------
+  // Profil + retraits
+  // -------------------------------------------------------------------------
+
+  const updateProfile = useCallback(
+    async (providerName: string, patch: Partial<ProviderProfileData>) => {
+      await updateAccount(providerName, patch)
+    },
+    [updateAccount]
+  )
+
+  const requestPayout = useCallback(
+    async (data: {
+      providerName: string
+      amountUSD: number
+      method: "M-Pesa" | "Orange Money" | "Airtel Money"
+      phoneNumber: string
+      notes?: string
+    }): Promise<PayoutRequest> => {
+      const payout = await api.post<PayoutRequest>("/api/payouts", data)
+      setPayoutRequests((prev) => [payout, ...prev])
+      return payout
+    },
+    []
+  )
+
+  const processPayout = useCallback(async (payoutId: string, transactionRef: string) => {
+    const updated = await api.patch<PayoutRequest>(`/api/payouts/${payoutId}`, {
+      action: "process",
+      transactionRef,
     })
-  }
+    setPayoutRequests((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
+  }, [])
 
-  const updateProfile = (providerName: string, patch: Partial<ProviderProfileData>) => {
-    setProfiles((prev) => ({ ...prev, [providerName]: { ...prev[providerName], ...patch } }))
-  }
-
-  const approveService = (serviceId: string) => {
-    syncServiceApproval(serviceId, "approved")
-    setOverrides((prev) => ({
-      ...prev,
-      [serviceId]: { ...prev[serviceId], adminApprovalStatus: "approved", adminFeedback: undefined },
-    }))
-  }
-
-  const rejectService = (serviceId: string, feedback: string) => {
-    syncServiceApproval(serviceId, "rejected", feedback)
-    setOverrides((prev) => ({
-      ...prev,
-      [serviceId]: { ...prev[serviceId], adminApprovalStatus: "rejected", adminFeedback: feedback },
-    }))
-  }
-
-  const updateServiceAdmin = (serviceId: string, patch: Partial<ServiceOverride>) => {
-    setOverrides((prev) => ({
-      ...prev,
-      [serviceId]: { ...prev[serviceId], ...patch },
-    }))
-  }
-
-  const deleteService = (serviceId: string) => {
-    setOverrides((prev) => ({
-      ...prev,
-      [serviceId]: { ...prev[serviceId], isDeleted: true },
-    }))
-  }
-
-  // Gestion des retraits Mobile Money
-  const requestPayout = (data: {
-    providerName: string
-    amountUSD: number
-    method: "M-Pesa" | "Orange Money" | "Airtel Money"
-    phoneNumber: string
-    notes?: string
-  }): PayoutRequest => {
-    const newPayout: PayoutRequest = {
-      id: `payout-${Math.random().toString(36).slice(2, 9)}`,
-      providerName: data.providerName,
-      amountUSD: data.amountUSD,
-      amountFC: Math.round(data.amountUSD * 2850),
-      method: data.method,
-      phoneNumber: data.phoneNumber,
-      status: "pending",
-      requestedAt: new Date().toISOString(),
-      notes: data.notes,
-    }
-    setPayoutRequests((prev) => [newPayout, ...prev])
-    // Miroir Supabase : demande de retrait Mobile Money
-    syncPayoutRequest(newPayout)
-    return newPayout
-  }
-
-  const processPayout = (payoutId: string, transactionRef: string) => {
-    syncPayoutProcessed(payoutId, transactionRef)
-    setPayoutRequests((prev) =>
-      prev.map((p) =>
-        p.id === payoutId
-          ? {
-              ...p,
-              status: "paid" as const,
-              processedAt: new Date().toISOString(),
-              transactionRef,
-            }
-          : p
-      )
-    )
-  }
-
-  const rejectPayout = (payoutId: string, notes?: string) => {
-    setPayoutRequests((prev) =>
-      prev.map((p) =>
-        p.id === payoutId
-          ? {
-              ...p,
-              status: "rejected" as const,
-              processedAt: new Date().toISOString(),
-              notes: notes || p.notes,
-            }
-          : p
-      )
-    )
-  }
+  const rejectPayout = useCallback(async (payoutId: string, notes?: string) => {
+    const updated = await api.patch<PayoutRequest>(`/api/payouts/${payoutId}`, {
+      action: "reject",
+      notes,
+    })
+    setPayoutRequests((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
+  }, [])
 
   return (
     <ProviderSpaceContext.Provider
       value={{
         mounted,
+        dataError,
         session,
         currentAccount,
         login,
@@ -504,21 +393,20 @@ export function ProviderSpaceProvider({ children }: { children: React.ReactNode 
         updateAccountStatus,
         updateAccount,
         deleteAccount,
-        overrides,
-        setOverride,
-        customServices,
-        addCustomService,
-        removeCustomService,
-        profiles,
-        updateProfile,
+        services,
+        addService,
+        updateService,
+        removeService,
         approveService,
         rejectService,
         updateServiceAdmin,
         deleteService,
+        updateProfile,
         payoutRequests,
         requestPayout,
         processPayout,
         rejectPayout,
+        reload,
       }}
     >
       {children}
@@ -532,44 +420,53 @@ export function useProviderSpace() {
   return ctx
 }
 
+/** Toutes les prestations visibles par l'utilisateur courant (périmètre DB chargé). */
 export function useMergedServices(): Service[] {
-  const { overrides, customServices } = useProviderSpace()
-  return useMemo(
-    () => [...catalogServices, ...customServices].map((s) => applyOverride(s, overrides[s.id])),
-    [overrides, customServices]
-  )
+  const { services } = useProviderSpace()
+  return services
 }
 
+/** Vitrine publique : prestations approuvées, en ligne, prestataire non suspendu. */
 export function usePublicServices(): Service[] {
-  const merged = useMergedServices()
-  const { accounts } = useProviderSpace()
+  const { services, accounts } = useProviderSpace()
   const suspendedProviders = useMemo(
     () => new Set(accounts.filter((a) => a.status === "suspended").map((a) => a.name.toLowerCase())),
     [accounts]
   )
 
   return useMemo(() => {
-    return merged.filter((s) => {
+    return services.filter((s) => {
       if (s.isDeleted) return false
       if (s.paused) return false
       if (suspendedProviders.has(s.provider.name.toLowerCase())) return false
       return s.adminApprovalStatus === "approved"
     })
-  }, [merged, suspendedProviders])
+  }, [services, suspendedProviders])
 }
 
 export function useProviderServices(providerName: string): Service[] {
-  const merged = useMergedServices()
+  const services = useMergedServices()
   return useMemo(
     () =>
-      merged.filter(
+      services.filter(
         (s) => !s.isDeleted && s.provider.name.toLowerCase() === providerName.toLowerCase()
       ),
-    [merged, providerName]
+    [services, providerName]
   )
 }
 
+/** Profil public d'un prestataire, dérivé de son compte en base. */
 export function useProviderProfile(providerName: string | null): ProviderProfileData {
-  const { profiles } = useProviderSpace()
-  return (providerName && profiles[providerName]) || {}
+  const { accounts } = useProviderSpace()
+  const account = providerName
+    ? accounts.find((a) => a.name.toLowerCase() === providerName.toLowerCase())
+    : undefined
+  return {
+    phone: account?.phone,
+    whatsapp: account?.whatsapp,
+    email: account?.email,
+    bio: account?.bio,
+    payoutMethod: account?.payoutMethod,
+    payoutNumber: account?.payoutNumber,
+  }
 }

@@ -41,27 +41,31 @@ export default function ProviderMessagesPage() {
     }
   })
 
-  const [activeThreadId, setActiveThreadId] = useState<string>(
-    threadList[0]?.threadId || "client-traiteur-demo"
-  )
+  const [activeThreadId, setActiveThreadId] = useState<string>("")
   const [replyText, setReplyText] = useState("")
+  const [sending, setSending] = useState(false)
 
   const currentThread =
     threadList.find((t) => t.threadId === activeThreadId) || threadList[0]
 
-  const handleSendReply = (e: React.FormEvent) => {
+  const handleSendReply = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!replyText.trim() || !currentThread) return
+    if (!replyText.trim() || !currentThread || sending) return
 
-    sendMessage({
-      threadId: currentThread.threadId,
-      fromRole: "provider",
-      fromName: providerName,
-      toRole: "client",
-      toName: currentThread.clientName,
-      content: replyText.trim(),
-    })
-    setReplyText("")
+    setSending(true)
+    try {
+      await sendMessage({
+        threadId: currentThread.threadId,
+        fromRole: "provider",
+        fromName: providerName,
+        toRole: "client",
+        toName: currentThread.clientName,
+        content: replyText.trim(),
+      })
+      setReplyText("")
+    } finally {
+      setSending(false)
+    }
   }
 
   if (!session) return null
@@ -155,7 +159,7 @@ export default function ProviderMessagesPage() {
               </div>
 
               {/* Champ réponse */}
-              <form onSubmit={handleSendReply} className="border-t border-zinc-100 pt-4 dark:border-zinc-800 flex gap-2">
+              <form onSubmit={(e) => void handleSendReply(e)} className="border-t border-zinc-100 pt-4 dark:border-zinc-800 flex gap-2">
                 <input
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}

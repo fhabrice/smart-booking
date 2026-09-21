@@ -188,6 +188,16 @@ create index if not exists bookings_provider_idx on public.bookings (provider_id
 create index if not exists bookings_status_idx   on public.bookings (status);
 create index if not exists bookings_date_idx     on public.bookings (date);
 
+-- Paiement direct au prestataire + commission plateforme (paiement sur le
+-- compte de réception déclaré à l'inscription ; répartition interne 4 % / 96 %,
+-- jamais affichée dans l'interface — voir src/lib/commission.ts).
+-- Idempotent : ADD COLUMN IF NOT EXISTS.
+alter table public.bookings add column if not exists provider_payout_method text;
+alter table public.bookings add column if not exists provider_payout_number text;
+alter table public.bookings add column if not exists commission_rate numeric(6,4) not null default 0.04;
+alter table public.bookings add column if not exists platform_fee  numeric(12,2) not null default 0;  -- 4 % du paiement
+alter table public.bookings add column if not exists provider_net  numeric(12,2) not null default 0;  -- 96 % du paiement
+
 -- 2.5 Panier multi-prestations (devis global) --------------------------------
 create table if not exists public.cart_items (
   id         text primary key default gen_random_uuid()::text,
