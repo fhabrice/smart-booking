@@ -242,10 +242,14 @@ dans **Project Settings** :
 | --- | --- | --- |
 | Database → Connection string | *Session pooler* (recommandé) | installer le schéma (`db:setup`) |
 | API → Project URL | `https://<ref>.supabase.co` | `SUPABASE_URL` de l'application |
-| API → `service_role` | clé secrète | `SUPABASE_SERVICE_ROLE_KEY` de l'application |
+| API keys → Secret keys | `sb_secret_…` (ou l'ancienne clé `service_role`) | `SUPABASE_SERVICE_ROLE_KEY` de l'application |
 
-> Le **mot de passe de la base** (Database → Reset database password) n'est pas la clé
-> `service_role` : le premier sert à installer le schéma, la seconde à faire tourner l'application.
+> ⚠️ **Ne confondez pas les deux clés du dashboard.** L'application n'utilise **aucune** clé dans
+> le navigateur : la clé *publishable* (`sb_publishable_…`, anciennement `anon`) ne sert pas ici et
+> ne permet pas d'écrire. `npm run db:check` détecte ce cas et le signale avant tout déploiement.
+>
+> Le **mot de passe de la base** (Database → Reset database password) n'est pas la clé secrète :
+> le premier sert à installer le schéma, la seconde à faire tourner l'application.
 
 #### 2. Installer le schéma et le catalogue
 

@@ -21,8 +21,65 @@ const KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? "").trim()
 if (!URL_BASE || !KEY) {
   console.error(
     "❌ Variables manquantes : SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY sont requises.\n\n" +
-      "   SUPABASE_SERVICE_ROLE_KEY = Supabase → Project Settings → API → service_role (SECRET).\n" +
+      "   SUPABASE_SERVICE_ROLE_KEY = Supabase → Project Settings → API keys.\n" +
+      "   Accepte la clé secrète récente (sb_secret_…) ou l'ancienne clé service_role (JWT).\n" +
       "   Elle reste côté serveur : ne la préfixez jamais NEXT_PUBLIC_ et ne la publiez pas.\n",
+  )
+  process.exit(1)
+}
+
+// ---------------------------------------------------------------------------
+//  Contrôle du type de clé — la confusion la plus fréquente du dashboard
+// ---------------------------------------------------------------------------
+
+function keyDiagnostic(key) {
+  if (key.startsWith("sb_publishable_")) {
+    return {
+      ok: false,
+      label: "clé publique (publishable)",
+      advice:
+        "C'est la clé PUBLIQUE (anciennement anon) : elle ne peut pas écrire et les\n" +
+        "     politiques RLS la limitent à la lecture. L'application a besoin de la clé\n" +
+        "     SECRÈTE : Project Settings → API keys → Secret keys (sb_secret_…).",
+    }
+  }
+  if (key.startsWith("sb_secret_")) {
+    return { ok: true, label: "clé secrète (format récent)", advice: "" }
+  }
+  if (key.startsWith("eyJ")) {
+    try {
+      const payload = JSON.parse(Buffer.from(key.split(".")[1], "base64url").toString("utf8"))
+      if (payload.role === "service_role") {
+        return { ok: true, label: "clé legacy service_role (JWT)", advice: "" }
+      }
+      if (payload.role === "anon") {
+        return {
+          ok: false,
+          label: "clé legacy anon (JWT)",
+          advice:
+            "Cette clé est PUBLIQUE : elle ne peut pas écrire. Utilisez la clé service_role\n" +
+            "     (API keys → Legacy API keys) ou la clé secrète récente (sb_secret_…).",
+        }
+      }
+      return { ok: false, label: `JWT de rôle « ${payload.role ?? "inconnu"} »`, advice: "Rôle inattendu : utilisez la clé service_role." }
+    } catch {
+      return { ok: false, label: "JWT illisible", advice: "La clé semble tronquée : recopiez-la en entier." }
+    }
+  }
+  return {
+    ok: false,
+    label: "format de clé inconnu",
+    advice: "Utilisez la clé secrète (sb_secret_…) ou la clé legacy service_role du dashboard.",
+  }
+}
+
+const keyInfo = keyDiagnostic(KEY)
+if (keyInfo.ok) {
+  console.log(`🔑 Clé fournie : ${keyInfo.label}\n`)
+} else {
+  console.error(
+    `❌ Clé refusée avant même de contacter la base : ${keyInfo.label}.\n\n` +
+      `   → ${keyInfo.advice}\n`,
   )
   process.exit(1)
 }
