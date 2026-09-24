@@ -268,6 +268,31 @@ const { startRestServer } = await import("./local-rest-server.mjs")
 const restServer = await startRestServer({ port: REST_PORT, host: "127.0.0.1" })
 console.log(`✔ API REST locale → http://127.0.0.1:${REST_PORT}/rest/v1 (mode dev uniquement)`)
 
+// ---------------------------------------------------------------------------
+//  4 bis. .env.local — pour que `npm run dev` (lancé séparément) trouve la base
+// ---------------------------------------------------------------------------
+// Le README documente `npm run db:local` + `npm run dev`. Sans ce fichier,
+// `npm run dev` démarre sans base et la vitrine affiche « Base de données
+// requise ». On le crée donc au premier lancement, SANS jamais écraser une
+// configuration existante (par exemple un vrai projet Supabase).
+
+const ENV_FILE = path.join(ROOT, ".env.local")
+
+if (!fs.existsSync(ENV_FILE)) {
+  fs.writeFileSync(
+    ENV_FILE,
+    `# Généré automatiquement par \`npm run dev:local\` (base PostgreSQL embarquée).\n` +
+      `# Pour utiliser un VRAI projet Supabase, remplacez ces deux valeurs\n` +
+      `# (voir .env.example) — ce fichier ne sera plus régénéré.\n` +
+      `SUPABASE_URL=http://127.0.0.1:${REST_PORT}\n` +
+      `SUPABASE_SERVICE_ROLE_KEY=${LOCAL_SERVICE_KEY}\n` +
+      `ADMIN_ACCESS_CODE=${process.env.ADMIN_ACCESS_CODE ?? "admin243"}\n` +
+      `NEXT_PUBLIC_USD_TO_FC_RATE=${process.env.NEXT_PUBLIC_USD_TO_FC_RATE ?? "2850"}\n`,
+    "utf8",
+  )
+  console.log("✔ .env.local créé (base locale) — il n'écrasera aucune configuration existante.")
+}
+
 if (DB_ONLY) {
   console.log("\n🟢 Base locale prête. Lancez `npm run dev` dans un autre terminal.")
   console.log(`   (SUPABASE_URL=http://127.0.0.1:${REST_PORT} est lu depuis .env.local)\n`)

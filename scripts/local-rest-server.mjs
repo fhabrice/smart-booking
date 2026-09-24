@@ -366,7 +366,6 @@ async function attachEmbeds(table, rows, embeds) {
 function tableMetaCacheFk(table, rel) {
   const meta = metaCache.get(table)
   const fk = meta?.fks.find((f) => f.ref_table === rel)
-  console.log("[dbg] fk lookup", table, rel, "→", JSON.stringify(fk), "| fks:", JSON.stringify(meta?.fks))
   if (!fk) {
     throw httpError(400, "PGRST200", `Relation « ${rel} » introuvable sur la table « ${table} ».`)
   }

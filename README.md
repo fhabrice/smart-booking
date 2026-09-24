@@ -188,9 +188,11 @@ le même comportement qu'avec un projet Supabase, sans aucune donnée de démo.
 
 À savoir :
 
-- `.env.local` est préconfiguré pour ce mode (`SUPABASE_URL=http://127.0.0.1:54321`
-  et clé locale factice `local-dev-service-role-key`) ; pour repasser sur un **vrai
-  projet Supabase**, remplacez simplement les deux variables (voir `.env.example`).
+- `.env.local` est **créé automatiquement au premier lancement** de `npm run dev:local`
+  s'il n'existe pas (`SUPABASE_URL=http://127.0.0.1:54321` et clé locale factice
+  `local-dev-service-role-key`) — un fichier déjà présent n'est **jamais écrasé**. Pour
+  repasser sur un **vrai projet Supabase**, remplacez simplement les deux variables
+  (voir `.env.example`).
 - Variables surchargeables : `LOCAL_PG_PORT` (54322), `LOCAL_REST_PORT` (54321),
   `APP_PORT` (3000), `ADMIN_ACCESS_CODE` (admin243).
 - `npm run seed` (chargement REST du catalogue) fonctionne aussi contre la base locale :
@@ -299,11 +301,25 @@ réécrire l'interface.
 1. **Build command** : `npm run build` — **Publish directory** : géré par le runtime Next.js de Netlify
    (installer `@netlify/plugin-nextjs` si ce n'est pas déjà fait automatiquement).
 2. **Node** : 20 ou supérieur (le dépôt est validé avec Node 22).
-3. **Site settings → Environment variables** : ajouter `NEXT_PUBLIC_SUPABASE_URL`,
-   `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (optionnelle) et `ADMIN_ACCESS_CODE`.
-4. Les variables préfixées `NEXT_PUBLIC_` sont injectées **au build** : relancer un déploiement après
-   toute modification (Deploys → Trigger deploy).
-5. Exécuter `supabase-schema.sql` dans Supabase **avant** le premier déploiement activant la base.
+3. **Site settings → Environment variables** — variables réellement lues par le code
+   (voir `.env.example`) :
 
-Sans ces variables, Netlify publie le site en mode local (`localStorage`) : la vitrine, le panier,
-les devis, l'espace prestataire et l'espace admin restent pleinement fonctionnels.
+   | Variable | Rôle |
+   | --- | --- |
+   | `SUPABASE_URL` | URL du projet Supabase — **obligatoire** (`NEXT_PUBLIC_SUPABASE_URL` accepté en repli) |
+   | `SUPABASE_SERVICE_ROLE_KEY` | Clé `service_role` — **obligatoire**, reste côté serveur |
+   | `ADMIN_ACCESS_CODE` | Code de l'espace `/admin` — **obligatoire en production** |
+   | `NEXT_PUBLIC_USD_TO_FC_RATE` | Taux d'affichage USD → FC (facultatif, défaut 2850) |
+
+   La clé `anon` n'est **pas** utilisée : le navigateur ne parle qu'aux Route Handlers `/api/*`.
+4. Exécuter `supabase-schema.sql` puis `seed-catalog.sql` dans Supabase **avant** le premier
+   déploiement.
+5. `ADMIN_ACCESS_CODE` et les variables `NEXT_PUBLIC_*` sont injectées **au build** : relancer un
+   déploiement (Deploys → Trigger deploy) après toute modification.
+
+> ⚠️ **Sans `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`, le site se déploie mais n'affiche
+> aucune donnée** : les routes `/api/*` répondent `503` et l'interface montre l'état vide
+> « Base de données requise ». Il n'existe plus de mode de secours `localStorage`.
+> De même, sans `ADMIN_ACCESS_CODE`, l'espace `/admin` reste accessible avec le code public
+> `admin243` et le serveur journalise une alerte de sécurité explicite.
+

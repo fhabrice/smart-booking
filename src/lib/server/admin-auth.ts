@@ -13,8 +13,25 @@ export const ADMIN_COOKIE_NAME = "sb-rdc-admin-token"
 export const ADMIN_COOKIE_MAX_AGE = 60 * 60 * 12 // 12 heures
 const TOKEN_PAYLOAD = "smart-booking-rdc::admin-session::v1"
 
+/** Code de secours — public (documenté dans le README) : inutilisable en production. */
+export const FALLBACK_ADMIN_CODE = "admin243"
+
+let fallbackWarned = false
+
 export function configuredAdminCode(): string {
-  return (process.env.ADMIN_ACCESS_CODE ?? "").trim() || "admin243"
+  const configured = (process.env.ADMIN_ACCESS_CODE ?? "").trim()
+  if (configured) return configured
+
+  // Aucun code défini : on retombe sur le code public du dépôt. Acceptable en
+  // développement, JAMAIS en production — on le signale alors explicitement.
+  if (process.env.NODE_ENV === "production" && !fallbackWarned) {
+    fallbackWarned = true
+    console.error(
+      "🚨 SÉCURITÉ — ADMIN_ACCESS_CODE n'est pas défini : l'espace /admin accepte le code public " +
+        `« ${FALLBACK_ADMIN_CODE} ». Définissez ADMIN_ACCESS_CODE avec une valeur forte avant mise en ligne.`,
+    )
+  }
+  return FALLBACK_ADMIN_CODE
 }
 
 export function validAdminCodes(): string[] {
