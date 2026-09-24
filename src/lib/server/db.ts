@@ -195,11 +195,15 @@ export async function dbListPublicServices(): Promise<Service[]> {
       .eq("is_deleted", false)
       .eq("paused", false)
       .order("created_at", { ascending: false }),
-    sb!.from("providers").select("name").eq("status", "suspended"),
+    sb!.from("providers").select("id,name").eq("status", "suspended"),
   ])
   if (error) fail("listPublicServices", error.message)
+  const suspendedIds = new Set((suspended ?? []).map((p: Row) => String(p.id)))
   const suspendedNames = new Set((suspended ?? []).map((p: Row) => String(p.name).toLowerCase()))
   return (data ?? [])
+    // Le filtrage par identifiant est le plus fiable : contrairement au nom, il
+    // ne peut pas se désynchroniser (renommage, correction manuelle en base).
+    .filter((row: Row) => !(row.provider_id && suspendedIds.has(String(row.provider_id))))
     .map(rowToService)
     .filter((s) => !suspendedNames.has(s.provider.name.toLowerCase()))
 }
@@ -410,9 +414,101 @@ export type ProviderPatch = Partial<{
   payoutNumber: string | null
 }>
 
+/**
+ * Identifiant d'un compte prestataire à partir de son nom commercial.
+ * L'identifiant, contrairement au nom, résiste aux renommages : on le stocke
+ * donc sur les réservations et les retraits pour que ces données restent
+ * rattachées au bon compte même après une correction de nom.
+ */
+async function dbResolveProviderId(providerName: string): Promise<string | null> {
+  const sb = getSupabaseAdmin()
+  if (!sb || !providerName.trim()) return null
+  const { data } = await sb.from("providers").select("id").ilike("name", providerName).maybeSingle()
+  return data ? String((data as Row).id) : null
+}
+
+/**
+ * Propage un renommage de compte prestataire aux copies dénormalisées du nom.
+ *
+ * Sans cette propagation, renommer un compte (action prévue dans
+ * `/admin/providers`) casse l'espace du prestataire : l'espace prestataire,
+ * son agenda et ses retraits sont indexés par nom, il ne retrouverait donc
+ * plus rien. Pire, la suspension d'un compte cesse de masquer ses prestations
+ * dans la vitrine, puisque ce filtrage comparait les noms.
+ */
+async function dbPropagateProviderRename(
+  providerId: string,
+  previousName: string,
+  newName: string,
+): Promise<void> {
+  const sb = getSupabaseAdmin()
+  if (!sb) return
+
+  const services = await sb
+    .from("services")
+    .update({ provider_name: newName })
+    .eq("provider_id", providerId)
+  if (services.error) fail("renameProvider", `services : ${services.error.message}`)
+
+  const payouts = await sb
+    .from("payout_requests")
+    .update({ provider_name: newName })
+    .eq("provider_id", providerId)
+  if (payouts.error) fail("renameProvider", `payout_requests : ${payouts.error.message}`)
+
+  // Les réservations antérieures ne stockaient pas l'identifiant : on les
+  // rattache d'abord via l'ancien nom, puis on les renomme par identifiant.
+  const backfill = await sb
+    .from("bookings")
+    .update({ provider_id: providerId })
+    .ilike("provider_name", previousName)
+    .is("provider_id", null)
+  if (backfill.error) fail("renameProvider", `bookings (rattachement) : ${backfill.error.message}`)
+
+  const bookings = await sb
+    .from("bookings")
+    .update({ provider_name: newName })
+    .eq("provider_id", providerId)
+  if (bookings.error) fail("renameProvider", `bookings : ${bookings.error.message}`)
+
+  // Fils de discussion : l'interface reconstruit leur identifiant à partir du
+  // nom courant (`admin-<prestataire>` pour l'assistance, `cp-<prestataire>-
+  // <téléphone>` pour les échanges client). Sans réécriture, historique client
+  // et assistance deviendraient invisibles des deux côtés.
+  // On filtre par `like` paramétré (et non par une chaîne `or=` brute) pour ne
+  // pas casser sur les noms contenant des caractères réservés par PostgREST.
+  const renaming: Array<[string, string]> = [
+    [`admin-${previousName}`, `admin-${newName}`],
+    [`cp-${previousName}-`, `cp-${newName}-`],
+  ]
+  for (const [oldPrefix, newPrefix] of renaming) {
+    const { data: rows, error: readError } = await sb
+      .from("messages")
+      .select("id,thread_id")
+      .like("thread_id", `${oldPrefix}%`)
+    if (readError) fail("renameProvider", `messages : ${readError.message}`)
+    for (const row of (rows ?? []) as Row[]) {
+      const threadId = String(row.thread_id)
+      const { error: writeError } = await sb
+        .from("messages")
+        .update({ thread_id: `${newPrefix}${threadId.slice(oldPrefix.length)}` })
+        .eq("id", row.id)
+      if (writeError) fail("renameProvider", `messages : ${writeError.message}`)
+    }
+  }
+}
+
 export async function dbUpdateProvider(id: string, patch: ProviderPatch): Promise<ProviderAccount> {
   const sb = getSupabaseAdmin()
   if (!sb) fail("updateProvider", "client indisponible")
+
+  // Un renommage se propage : on lit le nom actuel avant de le modifier.
+  let previousName: string | null = null
+  if (patch.name !== undefined) {
+    const { data: current } = await sb.from("providers").select("name").eq("id", id).maybeSingle()
+    previousName = current ? String((current as Row).name) : null
+  }
+
   const update: Row = {}
   if (patch.name !== undefined) update.name = patch.name
   if (patch.contactPerson !== undefined) update.contact_person = patch.contactPerson
@@ -435,6 +531,10 @@ export async function dbUpdateProvider(id: string, patch: ProviderPatch): Promis
   const { data, error } = await sb.from("providers").update(update).eq("id", id).select("*").maybeSingle()
   if (error) fail("updateProvider", error.message)
   if (!data) throw new DbError("Compte prestataire introuvable.")
+  const renamedTo = patch.name !== undefined ? String(patch.name) : null
+  if (previousName && renamedTo && renamedTo !== previousName) {
+    await dbPropagateProviderRename(id, previousName, renamedTo)
+  }
   return rowToProvider(data)
 }
 
@@ -468,12 +568,16 @@ export type BookingInsert = Omit<Booking, "id" | "createdAt"> & { id?: string }
 export async function dbCreateBooking(booking: BookingInsert): Promise<Booking> {
   const sb = getSupabaseAdmin()
   if (!sb) fail("createBooking", "client indisponible")
+  // Rattache la réservation au compte prestataire : l'identifiant résiste aux
+  // renommages, contrairement au nom commercial.
+  const providerId = await dbResolveProviderId(booking.providerName)
   const { data, error } = await sb
     .from("bookings")
     .insert({
       id: booking.id ?? undefined,
       event_id: booking.eventId ?? null,
       service_id: booking.serviceId || null,
+      provider_id: providerId,
       provider_name: booking.providerName,
       service_name: booking.serviceName,
       service_image: booking.serviceImage,
@@ -681,9 +785,13 @@ export async function dbCreatePayout(
 ): Promise<PayoutRequest> {
   const sb = getSupabaseAdmin()
   if (!sb) fail("createPayout", "client indisponible")
+  // Identifiant du compte : garantit que la demande reste rattachée au
+  // prestataire même si son nom commercial est rectifié ensuite.
+  const providerId = await dbResolveProviderId(payout.providerName)
   const { data, error } = await sb
     .from("payout_requests")
     .insert({
+      provider_id: providerId,
       provider_name: payout.providerName,
       amount_usd: payout.amountUSD,
       amount_fc: payout.amountFC,

@@ -12,7 +12,8 @@
     "lint": "eslint",
     "seed": "node scripts/seed-remote.mjs",
     "db:setup": "node scripts/db-setup.mjs",
-    "db:check": "node scripts/db-check.mjs"
+    "db:check": "node scripts/db-check.mjs",
+    "smoke": "node scripts/smoke.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

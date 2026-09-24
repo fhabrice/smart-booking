@@ -1,0 +1,32 @@
+# ============================================================================
+#  Smart Booking RDC 🇨🇩 — Configuration de déploiement Netlify
+# ============================================================================
+
+[build]
+  command = "npm run build"
+  # Le runtime Next.js de Netlify lit le résultat du build dans .next
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Runtime officiel Next.js (Route Handlers, rendu serveur, images).
+# Netlify l'installe automatiquement depuis cette déclaration.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Repère utile : `netlify dev` utilise la même base locale que `npm run dev:local`
+[dev]
+  command = "npm run dev:local"
+  port = 3000
+  targetPort = 3000
+
+# Variables d'environnement à définir dans
+# Site settings → Environment variables (elles ne sont PAS versionnées ici) :
+#   SUPABASE_URL               = https://<ref>.supabase.co        (obligatoire)
+#   SUPABASE_SERVICE_ROLE_KEY  = sb_secret_…                      (obligatoire, secret)
+#   ADMIN_ACCESS_CODE          = <code fort>                      (obligatoire)
+#   NEXT_PUBLIC_USD_TO_FC_RATE = 2850                             (facultatif)
+#
+# Sans les deux premières, le site se déploie mais n'affiche aucune donnée
+# (les routes /api/* répondent 503). Vérifier après déploiement : npm run db:check

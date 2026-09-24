@@ -197,9 +197,36 @@ le même comportement qu'avec un projet Supabase, sans aucune donnée de démo.
   `APP_PORT` (3000), `ADMIN_ACCESS_CODE` (admin243).
 - `npm run seed` (chargement REST du catalogue) fonctionne aussi contre la base locale :
   `SUPABASE_URL=http://127.0.0.1:54321 SUPABASE_SERVICE_ROLE_KEY=local-dev-service-role-key npm run seed`.
+- `npm run smoke` vérifie l'instance locale (`--write` pour le parcours complet,
+  écritures comprises).
 - ⚠️ Mode **développement uniquement** : la clé locale n'est pas vérifiée et les
   serveurs n'écoutent que sur `127.0.0.1` ; n'exposez jamais ce processus sur un
   réseau public. En production, utilisez un vrai projet Supabase (ci-dessous).
+
+### ⚠️ Rattachement du catalogue — point de données à connaître
+
+Dans le catalogue initial (`seed-catalog.sql`), **seule 1 des 20 prestations est rattachée à un
+compte prestataire** : les autres portent un nom commercial (celui affiché en vitrine) qui ne
+correspond à aucune des 6 fiches prestataires du catalogue.
+
+| Conséquence | Détail |
+| --- | --- |
+| Vitrine client | ✅ aucune — le nom commercial est stocké sur la prestation elle-même |
+| Espace prestataire | ⚠️ ces prestations n'apparaissent dans le tableau de bord d'aucun compte connecté |
+| Suspension d'un compte | ✅ sans effet sur elles (ce n'est de toute façon pas leur compte) |
+
+Un compte ne peut donc **pas** modifier ces prestations, et elles ne disparaissent pas si une
+fiche prestataire est supprimée. `npm run db:check` signale ce point à chaque exécution.
+
+Deux façons de le régulariser :
+
+1. **Créer une fiche par nom commercial** (dans `/admin/providers` ou `/provider`), puis rattacher
+   les prestations depuis l'espace prestataire ;
+2. ou **rattacher ces prestations à vos 6 comptes existants** (par exemple par catégorie :
+   salles → compte salles, sono → compte sono), si ces noms commerciaux sont bien les marques
+   exploitées par ces comptes.
+
+Tant que ce point n'est pas tranché, la vitrine et les réservations fonctionnent normalement.
 
 ---
 
@@ -285,6 +312,22 @@ avec jointures, colonnes de paiement, référentiels), vérifie que la clé `ser
 **écrire** (ligne de contrôle créée puis supprimée) et affiche les avertissements de cohérence
 des données. Code de sortie non nul en cas d'échec : utilisable avant un déploiement.
 
+#### 4. Contrôler l'instance (déploiement compris)
+
+```bash
+npm run smoke                                        # lecture seule, sûr en production
+npm run smoke -- --url https://<site>.netlify.app    # instance déployée
+npm run smoke -- --url … --write                     # parcours complet (crée des données)
+```
+
+Le test de fumée appelle les Route Handlers et les pages comme le ferait un navigateur : pages,
+vitrine, panier avec jointures, messagerie, modération admin, et — en mode `--write` — le
+renommage d'un compte et la vérification que catalogue, agenda, retraits et messagerie restent
+intacts, ainsi que l'effet réel d'une suspension. Code de sortie non nul en cas d'échec.
+
+> ⚠️ `--write` **crée de vraies données** (réservation, compte prestataire, prestation, retrait) :
+> à réserver à une base de test ou de développement.
+
 ### Installation manuelle (SQL Editor)
 
 1. **SQL Editor → New query** : coller le contenu de `supabase-schema.sql` puis **Run**.
@@ -350,6 +393,9 @@ réécrire l'interface.
 ---
 
 ## ▲ Déploiement Netlify
+
+Le dépôt contient un **[`netlify.toml`](./netlify.toml)** : commande de build, répertoire de
+publication, Node 22 et runtime Next.js sont déjà déclarés — aucun réglage manuel du build.
 
 1. **Build command** : `npm run build` — **Publish directory** : géré par le runtime Next.js de Netlify
    (installer `@netlify/plugin-nextjs` si ce n'est pas déjà fait automatiquement).
