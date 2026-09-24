@@ -10,7 +10,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed": "node scripts/seed-remote.mjs"
+    "seed": "node scripts/seed-remote.mjs",
+    "db:setup": "node scripts/db-setup.mjs",
+    "db:check": "node scripts/db-check.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

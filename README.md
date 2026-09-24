@@ -231,14 +231,63 @@ Le script est **idempotent** (ré-exécutable sans réinstallation), crée ses p
 `chat_role`, `activity_type`), ses triggers `updated_at` et active la **Row Level Security** :
 lecture publique du catalogue approuvé, écriture réservée au rôle `service_role`.
 
-### Installation (5 minutes)
+### 🔌 Brancher la base — installation en 3 étapes
 
-1. Créer un projet sur [supabase.com](https://supabase.com) (région de votre choix).
-2. **SQL Editor → New query** : coller le contenu de `supabase-schema.sql` puis **Run**.
-3. **SQL Editor → New query** : coller le contenu de `seed-catalog.sql` puis **Run**
+#### 1. Créer le projet Supabase
+
+Créer un projet sur [supabase.com](https://supabase.com) (région de votre choix), puis relever
+dans **Project Settings** :
+
+| Où | Quoi | Sert à |
+| --- | --- | --- |
+| Database → Connection string | *Session pooler* (recommandé) | installer le schéma (`db:setup`) |
+| API → Project URL | `https://<ref>.supabase.co` | `SUPABASE_URL` de l'application |
+| API → `service_role` | clé secrète | `SUPABASE_SERVICE_ROLE_KEY` de l'application |
+
+> Le **mot de passe de la base** (Database → Reset database password) n'est pas la clé
+> `service_role` : le premier sert à installer le schéma, la seconde à faire tourner l'application.
+
+#### 2. Installer le schéma et le catalogue
+
+```bash
+SUPABASE_DB_URL="postgresql://postgres.<ref>:<MOTDEPASSE>@aws-0-<region>.pooler.supabase.com:5432/postgres" \
+  npm run db:setup
+```
+
+Le script applique `supabase-schema.sql`, `seed-catalog.sql` puis `migration-paiement-direct.sql`
+(idempotent — relançable sans risque), **puis vérifie la base** : tables, RLS, types énumérés,
+référentiels, colonnes de paiement direct, catalogue. Il se termine par la liste exacte des
+variables à renseigner.
+
+| Option | Effet |
+| --- | --- |
+| `--check` | vérification seule, aucune écriture |
+| `--no-seed` | schéma uniquement, sans le catalogue |
+| `--reseed` | recharge le catalogue même s'il existe déjà |
+
+> Équivalent manuel : **SQL Editor → New query** et exécuter les trois scripts dans l'ordre
+> (les 3 étapes de fichiers ci-dessus).
+
+#### 3. Vérifier le branchement applicatif
+
+```bash
+SUPABASE_URL="https://<ref>.supabase.co" \
+SUPABASE_SERVICE_ROLE_KEY="<clé service_role>" \
+  npm run db:check
+```
+
+`db:check` interroge l'API REST **avec les mêmes requêtes que l'application** (vitrine, panier
+avec jointures, colonnes de paiement, référentiels), vérifie que la clé `service_role` sait
+**écrire** (ligne de contrôle créée puis supprimée) et affiche les avertissements de cohérence
+des données. Code de sortie non nul en cas d'échec : utilisable avant un déploiement.
+
+### Installation manuelle (SQL Editor)
+
+1. **SQL Editor → New query** : coller le contenu de `supabase-schema.sql` puis **Run**.
+2. **SQL Editor → New query** : coller le contenu de `seed-catalog.sql` puis **Run**
    (catalogue initial réel : 6 prestataires + 20 prestations).
-4. **Project Settings → API** : copier l'*URL* du projet et la clé *service_role*.
-5. Renseigner les variables d'environnement (voir [`.env.example`](./.env.example)) :
+3. **Project Settings → API** : copier l'*URL* du projet et la clé *service_role*.
+4. Renseigner les variables d'environnement (voir [`.env.example`](./.env.example)) :
 
 ```bash
 SUPABASE_URL=https://xxxxxxxxxxxx.supabase.co

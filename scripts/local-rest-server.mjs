@@ -211,15 +211,25 @@ async function tableMeta(table) {
   if (cols.rowCount === 0) {
     throw httpError(404, "42P01", `Table inconnue : ${table} (schéma non installé ?)`)
   }
+  // Les relations sont lues dans pg_catalog (et non information_schema, qui
+  // masque les contraintes selon les privilèges du rôle connecté) : c'est
+  // exactement ce que fait PostgREST pour construire son cache de schéma.
+  // Sans cela, un rôle non propriétaire (ex. service_role) ne verrait aucune
+  // relation et les sélections imbriquées `service(*)` échoueraient.
   const fks = await q(
-    `select kcu.column_name as column, ccu.table_name as ref_table, ccu.column_name as ref_column
-       from information_schema.table_constraints tc
-       join information_schema.key_column_usage kcu
-         on tc.constraint_name = kcu.constraint_name and tc.table_schema = kcu.table_schema
-       join information_schema.constraint_column_usage ccu
-         on tc.constraint_name = ccu.constraint_name and tc.table_schema = ccu.table_schema
-      where tc.constraint_type = 'FOREIGN KEY' and tc.table_schema = 'public'
-        and tc.table_name = $1`,
+    `select att.attname       as column,
+            cl_ref.relname    as ref_table,
+            att_ref.attname   as ref_column
+       from pg_constraint con
+       join pg_class      cl      on cl.oid      = con.conrelid
+       join pg_namespace  ns      on ns.oid      = cl.relnamespace
+       join pg_class      cl_ref  on cl_ref.oid  = con.confrelid
+       join pg_namespace  ns_ref  on ns_ref.oid  = cl_ref.relnamespace
+       join lateral unnest(con.conkey, con.confkey) as k(conkey, confkey) on true
+       join pg_attribute  att     on att.attrelid     = con.conrelid and att.attnum     = k.conkey
+       join pg_attribute  att_ref on att_ref.attrelid = con.confrelid and att_ref.attnum = k.confkey
+      where con.contype = 'f' and ns.nspname = 'public' and ns_ref.nspname = 'public'
+        and cl.relname = $1`,
     [table],
   )
   const meta = {
